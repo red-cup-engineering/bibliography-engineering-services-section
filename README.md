@@ -38,12 +38,12 @@ because a term is specifically a glossary carrier).
   carrier no `references:` entry cites).
 - `scripts/project-references-bibtex.mjs` — deterministic generated `.bib`.
 - `scripts/record-set-of-references-health.mjs` — witnesses a reconciliation
-  through `@red-cup-engineering/semiotic-eavt-services-section`.
+  through `@red-cup-engineering/semiotic-eavt-engineering-services-section`.
 - `scripts/parse-set-of-citations.mjs` — free-text citation lines to a keyed
   `references:` map, via the CSL-JSON landmark scanner in `src/citation-text.mjs`.
 - `scripts/import-set-of-csl-references.mjs` — a CSL-JSON array, or a
   single bare CSL-JSON item object, to a keyed `references:` map, via the
-  record formatter in `@red-cup-engineering/csl-json-services-section`. A citation carrying a DOI can be upgraded to
+  record formatter in `@red-cup-engineering/csl-json-engineering-services-section`. A citation carrying a DOI can be upgraded to
   CrossRef-authoritative metadata with
   `apps/bibliography-cli.mjs resolve-doi <doi> | apps/bibliography-cli.mjs import-csl`.
 - `scripts/project-references-csl.mjs` — a scope's collected references as a
@@ -89,7 +89,7 @@ CrossRef's polite pools and per NCBI's usage guidelines; it never gates
 access. The record shapes themselves are not decoded here — the CSL-JSON
 projections of an OpenAlex work, a PubMed summary, and a CrossRef work are
 a data format's business and live in
-`@red-cup-engineering/csl-json-services-section`.
+`@red-cup-engineering/csl-json-engineering-services-section`.
 
 ### Systematic-review screening and journal watches
 
