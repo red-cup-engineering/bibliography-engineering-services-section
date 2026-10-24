@@ -48,6 +48,29 @@ because a term is specifically a glossary carrier).
   `apps/bibliography-cli.mjs resolve-doi <doi> | apps/bibliography-cli.mjs import-csl`.
 - `scripts/project-references-csl.mjs` — a scope's collected references as a
   CSL-JSON array, for a Pandoc `references:` bibliography.
+- `src/bibliography-csl.mjs` (`./csl`) — `projectBibliographyRecordsCsl(records)`:
+  depth-2 bibliography carrier records to CSL-JSON items sorted by citekey.
+  The depth-1 fields go through csl-json's `toCslItem` under this engine's
+  `admitReferenceEntry`; the carrier's `reference-type` (BibTeX word) names
+  the CSL item type and `translator` becomes a CSL name list. Consumed by
+  `@red-cup-engineering/csl-yaml-services-section` for Pandoc YAML.
+- `scripts/migrate-reference-records-to-bibliography-records.mjs`
+  (`src/bibliography-migration.mjs`, `./migration`) — a **one-time**
+  migration of legacy `type: reference` carriers (`key, authors, year, title,
+  venue` + annotation) to `type: bibliography`. No compatibility reading of
+  the legacy shape exists anywhere; run it once and commit. Dry run by
+  default; `--write` rewrites the migrated files in place. It never guesses:
+  `key` becomes the filename stem; `authors` strings split on `;`; a year
+  range keeps its first year as `year` and the original as `year-range`;
+  `venue` becomes `publisher` for book-like reference types and
+  `publication` otherwise; an absent `reference-type` becomes `misc` (and is
+  listed as defaulted, for review, or set from `--reference-types types.json`
+  keyed by filename stem); a record lacking authors, year or title, or whose
+  filename stem is not a citekey, is refused and left untouched unless
+  `--supplements supplements.json` (`{ "<stem>": { authors, year, title,
+  "reference-type", publication, publisher } }`) supplies the missing values.
+  Every migrated file is re-recognized under the bibliography carrier
+  contract before it is emitted.
 - `scripts/project-references-aria.mjs` (`src/bibliography-aria.mjs`) — a
   scope's collected references as W3C DPUB-ARIA 1.1 bibliography HTML
   (`doc-bibliography` / `doc-biblioentry` roles for the rendered list,
