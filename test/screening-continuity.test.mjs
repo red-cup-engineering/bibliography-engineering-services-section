@@ -128,3 +128,26 @@ test('a fabricated new candidate receipt list is refused',()=>{
   result.changes.newCandidateReceipts.push({fake:true});
   assert.throws(()=>assessScreeningContinuity({previous:req,watchResult:result}),/candidate receipts disagree/);
 });
+
+test('standalone operation emits JSON and signals reassessment as exit 1, not automatic clearance',async()=>{
+  const { spawnSync }=await import('node:child_process');
+  const req=previous();const change=revision(req.ledger,{title:'Changed'});
+  const execution=spawnSync(process.execPath,[new URL('../scripts/review-screening-continuity.mjs',import.meta.url).pathname],{
+    input:JSON.stringify({previous:req,watchResult:watch(req.ledger,{revisions:[change]})}),encoding:'utf8'});
+  assert.equal(execution.status,1,execution.stderr);
+  assert.deepEqual(JSON.parse(execution.stdout).reassessmentRecordIds,['doi:10.1234/example']);
+});
+test('standalone operation returns zero only when there are no observed changes',async()=>{
+  const { spawnSync }=await import('node:child_process');
+  const req=previous();const execution=spawnSync(process.execPath,[new URL('../scripts/review-screening-continuity.mjs',import.meta.url).pathname],{
+    input:JSON.stringify({previous:req,watchResult:watch(req.ledger)}),encoding:'utf8'});
+  assert.equal(execution.status,0,execution.stderr);
+  assert.equal(JSON.parse(execution.stdout).releaseQualification.automaticScreeningOrPublicationAuthorized,false);
+});
+test('standalone operation refuses malformed research data as exit 2',async()=>{
+  const { spawnSync }=await import('node:child_process');
+  const execution=spawnSync(process.execPath,[new URL('../scripts/review-screening-continuity.mjs',import.meta.url).pathname],{
+    input:JSON.stringify({unrelated:true}),encoding:'utf8'});
+  assert.equal(execution.status,2);
+  assert.match(execution.stderr,/original screening request/);
+});
