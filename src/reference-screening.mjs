@@ -144,8 +144,9 @@ export function assessRecordedScreening({ledger,protocol,reviews=[],adjudication
         !Array.isArray(raw.reviewIds) || raw.reviewIds.length!==2 ||
         [...raw.reviewIds].sort(compare).join("|")!==seen.map(r=>r.id).sort(compare).join("|"))
       bad("adjudication must bind exactly two different existing reviewer records");
-    if (seen[0].decision===seen[1].decision && seen[0].criterion===seen[1].criterion &&
-        seen[0].decision!=="uncertain") bad("adjudication is not justified by a disagreement");
+    if (seen.some(r=>r.decision==="uncertain")) bad("uncertain votes require additional evidence, not a fabricated arbitration");
+    if (seen[0].decision===seen[1].decision && seen[0].criterion===seen[1].criterion)
+      bad("adjudication is not justified by a disagreement");
     if (decision.decision==="uncertain") bad("adjudication must resolve to include or exclude");
     adjudicationMap.set(decision.recordId,Object.freeze({...decision,reviewIds:[...raw.reviewIds].sort(compare)}));
   }
@@ -166,6 +167,7 @@ export function assessRecordedScreening({ledger,protocol,reviews=[],adjudication
       const [a,b]=evidence;
       if (a.decision===b.decision && a.criterion===b.criterion &&
           a.decision!=="uncertain") {status=a.decision==="include"?"included":"excluded";criterion=a.criterion??null;}
+      else if (a.decision==="uncertain" || b.decision==="uncertain") status="pending";
       else if (adjudication) {status=adjudication.decision==="include"?"included":"excluded";criterion=adjudication.criterion??null;}
       else status="conflict";
     }
@@ -184,22 +186,36 @@ export function assessRecordedScreening({ledger,protocol,reviews=[],adjudication
   const exclusionReasons=Object.fromEntries(protocol.criteria.map(c=>[c,0]));
   for (const row of screened) if (row.status==="excluded")exclusionReasons[row.criterion]+=1;
   const confirmedDuplicateReceipts = ledger.candidates.length - screened.reduce((n,row)=>n+ (row.identity==="doi-group"?1:row.sourceReceipts.length),0);
+  // Per-search reconciliation is essential: deficits in one source can
+  // exactly cancel excess candidate receipts in another when totals alone
+  // are compared. That does not establish valid PRISMA source coverage.
+  const perSearch=ledger.searches.map(search=>{
+    const receipts=ledger.candidates.filter(c=>c.searchId===search.id).length;
+    return {id:search.id,source:search.source,reportedHits:search.resultCount,
+      recordedCandidates:receipts,
+      discrepancy:receipts>search.resultCount?"more-receipts-than-reported-hits"
+        :receipts<search.resultCount?"partial-capture":"count-reconciled"};
+  });
+  const overRecorded=perSearch.filter(x=>x.discrepancy==="more-receipts-than-reported-hits");
   const searchCoverage={
     searchesRecorded:ledger.searches.length,
     reportedHits:ledger.searches.reduce((s,x)=>s+x.resultCount,0),
     candidateReceipts:ledger.candidates.length,
-    // The search resultCount can exceed rows retained; never infer recall.
-    notRecordedFromReportedHits:ledger.searches.reduce((s,x)=>s+x.resultCount,0)-ledger.candidates.length,
+    notRecordedFromReportedHits:perSearch.reduce((sum,x)=>sum+Math.max(0,x.reportedHits-x.recordedCandidates),0),
+    excessReceiptsBeyondReportedHits:perSearch.reduce((sum,x)=>sum+Math.max(0,x.recordedCandidates-x.reportedHits),0),
+    sourceCountInconsistencies:overRecorded.map(x=>x.id),
   };
   return {
     type:"SourceWitnessedReviewAssay",version:1,protocol:{id:protocol.id,stage:protocol.stage,criteria:[...protocol.criteria]},
     searches:ledger.searches.map(x=>({id:x.id,source:x.source,query:x.query,date:x.date??null,resultCount:x.resultCount})),
+    perSearchReconciliation:perSearch,
     records:screened,possibleDuplicateGroups,exclusionReasons,
     flow:{...searchCoverage,confirmedDoiDuplicateReceipts:confirmedDuplicateReceipts,screeningRecords:screened.length,...statusCounts,
       unverifiedTitleOnlyRecords:screened.filter(x=>x.identityUnverified).length},
     releaseQualification:{
       reviewRecordsAllResolved:screened.every(x=>["included","excluded"].includes(x.status)),
       uniqueStudiesEstablished:possibleDuplicateGroups.length===0 && screened.every(x=>!x.identityUnverified),
+      sourceCountReconciled:overRecorded.length===0,
       reviewerIndependenceAuthenticated:false,sourceAuthenticityVerified:false,
       fullTextScreeningPerformed:false,
       warrantedClaim:"reviewer decisions and exact supplied metadata spans only; not a complete systematic review",
