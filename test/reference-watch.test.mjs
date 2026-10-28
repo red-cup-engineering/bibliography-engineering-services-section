@@ -90,7 +90,7 @@ test("source metadata revisions are proposed for review but never overwrite olde
   assert.equal(second.changes.candidateSourceRevisions.length,1);
   assert.match(second.changes.candidateSourceRevisions[0].state,/unverified/);
   assert.equal(second.ledger.candidates.length,first.ledger.candidates.length);
-  assert.equal(first.ledger.candidates.find(c=>c.item.id==="https://openalex.org/W9000000001").item.title,
+  assert.equal(first.ledger.candidates.find(c=>c.item.id==="W9000000001").item.title,
     "Post-viral fatigue after SARS-CoV-2 infection");
 });
 test("unreachable PubMed is a typed partial run, never a false null finding",async()=>{
@@ -121,7 +121,7 @@ test("invalid watch commands, duplicate queries and foreign sources are refused 
   const network=fakeFetch();
   await assert.rejects(runWatch({...spec(),lookbackDays:100},{ledger:originalLedger(),now,fetchImpl:network.fetchImpl}),/1–30/);
   await assert.rejects(runWatch({...spec(),queries:[spec().queries[0],spec().queries[0]]},{ledger:originalLedger(),now,fetchImpl:network.fetchImpl}),/repeats/);
-  await assert.rejects(runWatch({...spec(),queries:[{source:"google",query:"anything"}]},{ledger:originalLedger(),now,fetchImpl:network.fetchImpl}),/source\/query/);
+  await assert.rejects(runWatch({...spec(),queries:[{source:"google",query:"anything"}]},{ledger:originalLedger(),now,fetchImpl:network.fetchImpl}),/WatchSpec query/);
   assert.equal(network.seen.length,0);
 });
 
