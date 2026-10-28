@@ -19,12 +19,13 @@ import { fetchPubmedSummaries } from "../scripts/fetch-pubmed-summaries.mjs";
 import { searchRegister } from "../src/register.mjs";
 import { assessCslRecordedScreening } from "../src/reference-screening-csl.mjs";
 import { runWatch } from "../src/reference-watch.mjs";
+import { auditLabeledIdentifierCarrier } from "../src/labeled-benchmark-audit.mjs";
 import { admitSourceRecord, checkNote, uncitedRows, readSourceRecord, recordRead, recordSearch, writeNoteReferences } from "../src/source-record.mjs";
 
 /** @returns {string} the usage block, one verb per line, each stating what it reads on stdin */
 function usage() {
   return [
-    "usage: bibliography <render|read|recognize|admit|write|collect|project|parse|import-csl|project-csl|resolve-doi|search-openalex|fetch-openalex|search-pubmed|fetch-pubmed-summaries|search-register|record-search|record-read|record-check|record-references|screen-review|watch-literature> [path]",
+    "usage: bibliography <render|read|recognize|admit|write|collect|project|parse|import-csl|project-csl|resolve-doi|search-openalex|fetch-openalex|search-pubmed|fetch-pubmed-summaries|search-register|record-search|record-read|record-check|record-references|screen-review|watch-literature|benchmark-audit> [path]",
     "",
     "  render         renders a bibliography record to Markdown; reads a bibliography record JSON object on stdin",
     "  read           reads one admitted bibliography by path, given as argv[3]; reads nothing on stdin",
@@ -51,6 +52,7 @@ function usage() {
     "",
     "  screen-review            validate CSL identity and dual-review evidence; read {ledger,protocol,reviews,adjudications} JSON on stdin",
     "  watch-literature         run one bounded public metadata watch against OpenAlex/PubMed; read {spec,ledger,now} JSON on stdin",
+    "  benchmark-audit          refuse unsupported unique gold labels; read {rawText,provenance} JSON on stdin",
     "",
     "  -h, --help     print this usage block and exit 0",
   ].join("\n");
@@ -85,6 +87,7 @@ switch (command) {
     break;
   }
   case "screen-review": result = assessCslRecordedScreening(input()); break;
+  case "benchmark-audit": result = auditLabeledIdentifierCarrier(input()); break;
   case "watch-literature": { const request=input(); result=await runWatch(request.spec,{ledger:request.ledger,now:request.now,mailto:request.mailto,email:request.email,delayBetweenQueriesMs:1200});break;}
   case "search-register": {
     const variables = Object.fromEntries(process.argv.slice(4).map((arg) => [arg.slice(0, arg.indexOf("=")), arg.slice(arg.indexOf("=") + 1)]));

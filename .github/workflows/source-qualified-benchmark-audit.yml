@@ -1,0 +1,74 @@
+name: Reproduce source-qualified cross-domain screening benchmark audit
+on:
+  pull_request:
+    paths:
+      - 'src/labeled-benchmark-audit.mjs'
+      - 'scripts/reproduce-synergy-identity-audit.mjs'
+      - 'test/labeled-benchmark*.test.mjs'
+      - 'research/source-pins/**'
+      - 'apps/bibliography-cli.mjs'
+      - 'package.json'
+      - '.github/workflows/source-qualified-benchmark-audit.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'src/labeled-benchmark-audit.mjs'
+      - 'scripts/reproduce-synergy-identity-audit.mjs'
+      - 'test/labeled-benchmark*.test.mjs'
+      - 'research/source-pins/**'
+      - 'apps/bibliography-cli.mjs'
+      - 'package.json'
+      - '.github/workflows/source-qualified-benchmark-audit.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  reproduce-external-source-audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install and run complete original bibliography native suite
+        run: |
+          npm install --ignore-scripts --no-audit --no-fund
+          npm run check
+          npm test
+      - name: Acquire three original SYNERGY raw ID files at pinned upstream Git commit; refuse hash drift
+        run: |
+          node scripts/reproduce-synergy-identity-audit.mjs > synergy-identity-source-audit.json
+      - name: Independently assess exact original-source identity and label-conflict counts
+        run: |
+          node --input-type=module -e '
+            import {readFileSync} from "node:fs";
+            const d=JSON.parse(readFileSync("synergy-identity-source-audit.json","utf8"));
+            if(d.sourceCommit!=="dc2dadfdbb98eb1b4259604789abd640aa3b693e") throw Error("Unpinned source!");
+            const expected=[
+              ["Sep_2021",273,271,0,40,0],
+              ["Donners_2021",660,258,15,15,157],
+              ["Smid_2020",3980,2627,21,27,1035],
+            ];
+            for(const [id,raw,unique,conflicts,positives,none] of expected){
+              const s=d.studies.find(x=>x.provenance.corpus===id);
+              if(!s||s.raw.rawRows!==raw||s.identity.uniqueOpenAlex!==unique||
+                 s.identity.conflictingLabelGroups!==conflicts||
+                 s.raw.rawPositiveRows!==positives||s.raw.missingAllIdentifiers!==none||
+                 !s.reportedBenchmark.exactMatchOfUniqueOpenAlexCount||
+                 s.authorization.validForTrainingWithoutAdjudication!==false)
+                throw Error("Original-source discrepancy in "+id);
+              console.log(id,JSON.stringify({
+                raw,unique,conflicts,positives,missingAllIdentifiers:none,
+                sha256:s.provenance.sha256
+              }));
+            }
+            if(d.totals.conflictingIdentityGroups!==36 ||
+               d.totals.rawRows!==4913 ||
+               d.totals.openAlexIdentities!==3156) throw Error("Cross-domain audit totals drifted");
+          '
+      - uses: actions/upload-artifact@v4
+        with:
+          name: independent-synergy-identity-audit
+          path: synergy-identity-source-audit.json
+          retention-days: 90
