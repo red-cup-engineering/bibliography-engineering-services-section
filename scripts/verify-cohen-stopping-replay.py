@@ -40,7 +40,7 @@ def git_blob(raw):
 
 
 def tokenize(text):
-    return WORD.findall(text.lower())
+    return WORDS.findall(text.lower())
 
 
 def read_original(task, commit):
