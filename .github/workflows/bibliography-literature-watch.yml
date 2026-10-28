@@ -1,0 +1,41 @@
+name: bounded-bibliography-literature-watch
+on:
+  pull_request:
+    paths:
+      - 'src/reference-watch.mjs'
+      - 'test/reference-watch*.test.mjs'
+      - 'scripts/watch-literature.mjs'
+      - 'apps/bibliography-cli.mjs'
+      - 'package.json'
+      - 'schemas/bibliography/literature-watch-request.schema.json'
+      - '.github/workflows/bibliography-literature-watch.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'src/reference-watch.mjs'
+      - 'test/reference-watch*.test.mjs'
+      - 'scripts/watch-literature.mjs'
+      - 'apps/bibliography-cli.mjs'
+      - 'package.json'
+      - 'schemas/bibliography/literature-watch-request.schema.json'
+      - '.github/workflows/bibliography-literature-watch.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  replay-watch-fixtures:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install original source producers and canonical CSL-JSON
+        run: npm install --ignore-scripts --no-audit --no-fund
+      - name: Check original source and replay archived OpenAlex/PubMed fixtures
+        run: |
+          npm run check
+          node --test test/reference-watch.test.mjs
+      - name: Prove existing bibliography and screening compatibility
+        run: npm test
