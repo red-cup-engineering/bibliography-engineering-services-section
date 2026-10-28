@@ -50,12 +50,33 @@ function readStrictIdentifierCsv(rawText) {
   return rows;
 }
 function countIdentity(group) {
-  const support=group.filter(x=>x.label_included==="1").length;
-  const against=group.filter(x=>x.label_included==="0").length;
+  const positive=group.filter(x=>x.label_included==="1");
+  const negative=group.filter(x=>x.label_included==="0");
+  const support=positive.length,against=negative.length;
   return {
     labelStatus:support&&against ? "conflicting" : support ? "included-only":"excluded-only",
     positiveRows:support,negativeRows:against,
     sourceRows:group.map(x=>x.sourceRow),
+  };
+}
+/**
+ * Contrast only the original source's *named retrieval methods*. Two
+ * opposite labels may have both same-method and cross-method witnesses:
+ * these are not mutually exclusive or causal explanations of the conflict.
+ * Unnamed/missing methods are unclassified, never silently inferred.
+ */
+function methodOpposition(group) {
+  const named=(label)=>new Set(group.filter(x=>x.label_included===label &&
+    typeof x.method==="string" && x.method!=="").map(x=>x.method));
+  const positives=named("1"),negatives=named("0");
+  const same=[...positives].some(method=>negatives.has(method));
+  const different=positives.size>0&&negatives.size>0&&
+    !(positives.size===1&&negatives.size===1&&
+      positives.values().next().value===negatives.values().next().value);
+  return {
+    sameNamedMethod:same,differentNamedMethod:different,
+    containsUnattributedMethod:group.some(x=>!x.method),
+    positiveMethods:[...positives].sort(),negativeMethods:[...negatives].sort(),
   };
 }
 /**
@@ -101,12 +122,25 @@ export function auditLabeledIdentifierCarrier({rawText,provenance}={}){
   }
   const classCounts={includedOnly:0,excludedOnly:0,conflicting:0,duplicateIdentityGroups:0};
   const conflicts=[],multiDoiPerIdentity=[],selected=[];
+  const methodContrast={sameNamedMethodGroups:0,differentNamedMethodGroups:0,
+    bothKindsGroups:0,sameNamedOnlyGroups:0,differentNamedOnlyGroups:0,
+    methodUnattributedGroups:0};
   for(const [id,rr] of [...group].sort(([a],[b])=>a.localeCompare(b))){
     const c=countIdentity(rr);
     if(rr.length>1)classCounts.duplicateIdentityGroups++;
     if(c.labelStatus==="conflicting") {
       classCounts.conflicting++;
-      conflicts.push({identity:id,positiveRows:c.positiveRows,negativeRows:c.negativeRows,sourceRows:c.sourceRows});
+      const methodOppositions=methodOpposition(rr);
+      const same=methodOppositions.sameNamedMethod;
+      const different=methodOppositions.differentNamedMethod;
+      if(same)methodContrast.sameNamedMethodGroups++;
+      if(different)methodContrast.differentNamedMethodGroups++;
+      if(same&&different)methodContrast.bothKindsGroups++;
+      else if(same)methodContrast.sameNamedOnlyGroups++;
+      else if(different)methodContrast.differentNamedOnlyGroups++;
+      if(methodOppositions.containsUnattributedMethod)methodContrast.methodUnattributedGroups++;
+      conflicts.push({identity:id,positiveRows:c.positiveRows,negativeRows:c.negativeRows,
+        sourceRows:c.sourceRows,methodOppositions});
     }else if(c.labelStatus==="included-only")classCounts.includedOnly++; else classCounts.excludedOnly++;
     const dois=[...new Set(rr.map(x=>x.doi).filter(Boolean))];
     if(dois.length>1)multiDoiPerIdentity.push({identity:id,count:dois.length});
@@ -140,6 +174,7 @@ export function auditLabeledIdentifierCarrier({rawText,provenance}={}){
       includedOnly:classCounts.includedOnly,excludedOnly:classCounts.excludedOnly,
       conflictingLabelGroups:classCounts.conflicting,
       conflictingGroups:conflicts,
+      conflictMethodContrast:methodContrast,
       absentOpenAlexPositiveRows:noIdPos,
       unlinkedSourceRows:unlinkedRows.map(x=>x.sourceRow),
       inconsistentOpenAlexToDoi:multiDoiPerIdentity,
