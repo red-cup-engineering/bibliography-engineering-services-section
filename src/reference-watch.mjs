@@ -12,6 +12,8 @@ import { searchPubmed } from "../scripts/search-pubmed.mjs";
 import { fetchPubmedSummaries } from "../scripts/fetch-pubmed-summaries.mjs";
 import { makeCandidateRecord, verifyCslScreeningKeys } from "./reference-screening-csl.mjs";
 import { reliableBibliographyFetch } from "./reference-check.mjs";
+import { assessRecordedScreening } from "./reference-screening.mjs";
+import { assessScreeningContinuity } from "./screening-continuity.mjs";
 
 const MAX_QUERIES=4, MAX_ITEMS_PER_QUERY=25, MAX_PRIOR=5000, MAX_QUERY_LENGTH=300;
 const SOURCE=new Set(["openalex","pubmed"]);
@@ -66,9 +68,12 @@ function ensureLedger(ledger) {
  */
 export async function runWatch(spec, {ledger,now,fetchImpl=fetch,email,mailto,
     delayBetweenQueriesMs=0,timeoutMs=10000,searchOpenAlex=searchOpenAlexWorks,
-    searchPubMed=searchPubmed,readPubmed=fetchPubmedSummaries}={}) {
+    searchPubMed=searchPubmed,readPubmed=fetchPubmedSummaries,previousScreening}={}) {
   ensureSpec(spec);
   const priorIds=ensureLedger(ledger);
+  // Fail before network acquisition if the historical review input itself
+  // is not a source-qualified screening. An orphan source cannot be reviewed.
+  if(previousScreening!==undefined) assessRecordedScreening(previousScreening);
   const window=dateWindow({now,lookbackDays:spec.lookbackDays});
   if(!Number.isSafeInteger(delayBetweenQueriesMs)||delayBetweenQueriesMs<0||
       delayBetweenQueriesMs>5000||!Number.isSafeInteger(timeoutMs)||
@@ -154,7 +159,7 @@ export async function runWatch(spec, {ledger,now,fetchImpl=fetch,email,mailto,
       reason:"missing-or-contradictory-original-retrieval-receipt"}));
   const completed=searches.length-ledger.searches.length;
   const partial=searches.slice(ledger.searches.length).some(s=>s.coverage!=="recorded-page-complete");
-  return {
+  const result = {
     type:"RecordedLiteratureWatchResult",version:1,watch:{id:spec.id,queries:spec.queries.map(q=>({...q})),
       interval:window,observedAt:now,execution:"single-invocation-no-scheduler"},
     disposition:refused.length ? "partial-or-refused" : partial ? "partial-source-coverage":"recorded-pages-received",
@@ -172,4 +177,11 @@ export async function runWatch(spec, {ledger,now,fetchImpl=fetch,email,mailto,
     limits:"Fetched source metadata only; single capped first page per query, no pagination/full-text/retraction detection, authentication, source rights, independent origin identity, screening decisions, scheduling or merchant settlement. New candidates remain unscreened.",
     externalEffects:["read-only-polite-public-bibliographic-API-requests"],
   };
+  // Complete the ordinary original acquisition first. The optional previous
+  // source-qualified screening turns same-run source revisions into explicit
+  // dependent Work candidates. It does not change the historical ledger.
+  return previousScreening === undefined ? result :
+    {...result,screeningContinuity:assessScreeningContinuity({
+      previous:previousScreening,watchResult:result
+    })};
 }

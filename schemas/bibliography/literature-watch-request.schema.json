@@ -86,6 +86,37 @@
     "mailto": {
       "type": "string",
       "maxLength": 254
+    },
+    "previousScreening": {
+      "type": "object",
+      "description": "Original, already source-qualified screening request before this watch; exact reviewer/source excerpt admission is performed by the native screening reducer before acquisition",
+      "required": [
+        "ledger",
+        "protocol"
+      ],
+      "properties": {
+        "ledger": {
+          "type": "object",
+          "required": [
+            "searches",
+            "candidates"
+          ],
+          "properties": {
+            "searches": {
+              "type": "array",
+              "maxItems": 5000
+            },
+            "candidates": {
+              "type": "array",
+              "maxItems": 5000
+            }
+          }
+        },
+        "protocol": {
+          "type": "object"
+        }
+      },
+      "additionalProperties": true
     }
   }
 }

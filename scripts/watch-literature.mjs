@@ -18,10 +18,15 @@ if (process.argv.length !== 2) {
     }
     const result=await runWatch(request.spec,{
       ledger:request.ledger,now:request.now,email:request.email,mailto:request.mailto,
-      delayBetweenQueriesMs:1200,
+      delayBetweenQueriesMs:1200,previousScreening:request.previousScreening,
     });
     process.stdout.write(JSON.stringify(result,null,2)+"\n");
-    if (result.disposition!=="recorded-pages-received") process.exitCode=1;
+    if (result.disposition!=="recorded-pages-received" ||
+      result.screeningContinuity?.reassessmentRecordIds.length ||
+      result.screeningContinuity?.newRecordCandidates.length ||
+      result.screeningContinuity?.heldUnqualifiedSourceRevisions.length ||
+      result.screeningContinuity?.sourceQueryRefusals.length)
+      process.exitCode=1;
   } catch (error) {
     console.error("literature watch refused: "+error.message);
     process.exitCode=2;

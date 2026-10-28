@@ -141,3 +141,88 @@ test("unlinked original fixture receipts stay in custody but cannot be laundered
   assert.equal(screened.releaseQualification.reviewRecordsAllResolved,false);
   assert.equal(screened.releaseQualification.reviewerIndependenceAuthenticated,false);
 });
+
+
+test("native watch → screening continuity admits original orphaned historical fixture without manufacturing search receipts",async()=>{
+  const prior=originalLedger(),network=fakeFetch();
+  const baseline={ledger:{searches:[],candidates:[]},
+    protocol:{id:"original-archived-source-admission",stage:"title-abstract",criteria:["out-of-scope"]}};
+  const result=await runWatch(spec(),{ledger:prior,now,fetchImpl:network.fetchImpl,
+    previousScreening:baseline});
+  const impact=result.screeningContinuity;
+  assert.equal(impact.type,"SourceWitnessedScreeningContinuityAssay");
+  assert.equal(impact.baseline.records,0);
+  assert.equal(impact.newRecordCandidates.length,4);
+  assert.equal(impact.unlinkedPriorCandidates.length,2);
+  assert.equal(impact.heldUnqualifiedSourceRevisions.length,0);
+  assert.deepEqual(impact.reassessmentRecordIds,[]);
+  assert.equal(result.ledger.candidates.length,6);
+  assert.equal(result.screeningInputLedger.candidates.length,4);
+  assert.equal(prior.searches.length,0);
+  assert.equal(prior.candidates.length,2);
+  assert.equal(impact.releaseQualification.automaticScreeningOrPublicationAuthorized,false);
+});
+
+test("native source watch → previously included review → changed source evidence reopens the actual original decision",async()=>{
+  const network=fakeFetch();
+  const initial=await runWatch(spec(),{ledger:originalLedger(),now,fetchImpl:network.fetchImpl});
+  const source=initial.screeningInputLedger.candidates.find(c=>c.dedupeKey==="doi:10.1000/watchtest.001");
+  assert.ok(source);
+  const evidence={searchId:source.searchId,itemId:source.item.id,field:"title",
+    start:0,end:source.item.title.length,quote:source.item.title};
+  const screening={ledger:initial.screeningInputLedger,
+    protocol:{id:"original-source-revision-retest",stage:"title-abstract",criteria:["out-of-scope"]},
+    reviews:[
+      {id:"inspector-1",recordId:source.dedupeKey,reviewerId:"reviewer-one",decision:"include",evidence},
+      {id:"inspector-2",recordId:source.dedupeKey,reviewerId:"reviewer-two",decision:"include",evidence},
+    ]};
+  const changed=async uri=>{
+    const response=await network.fetchImpl(uri);
+    if(String(uri).includes("api.openalex.org")){
+      const payload=await response.json();
+      payload.results[0].title="Source-revision candidate, not a verified paper correction";
+      return {ok:true,status:200,json:async()=>payload};
+    }
+    return response;
+  };
+  const next=await runWatch(spec(),{ledger:initial.ledger,now:"2026-09-01T12:00:00Z",
+    fetchImpl:changed,previousScreening:screening});
+  const impact=next.screeningContinuity;
+  assert.equal(next.changes.candidateSourceRevisions.length,1);
+  assert.deepEqual(impact.previouslyResolvedNowReassessmentRequired,[source.dedupeKey]);
+  assert.equal(impact.candidateSourceRevisions[0].affectedVotes.length,2);
+  assert.ok(impact.candidateSourceRevisions[0].affectedVotes.every(v=>!v.originalQuoteStillAtOffset));
+  assert.equal(impact.unlinkedPriorCandidates.length,2);
+  assert.equal(impact.newRecordCandidates.length,0);
+  assert.equal(impact.releaseQualification.priorResolvedDecisionsStillUncontestedByObservedChanges,false);
+  assert.equal(initial.ledger.candidates.find(c=>c.item.id===source.item.id).item.title,
+    "Post-viral fatigue after SARS-CoV-2 infection");
+});
+
+test("source revision of orphaned historical item remains held, never becomes retroactive reviewer evidence",async()=>{
+  const prior=originalLedger();
+  prior.candidates[0].item.id="W9000000001"; // match the retrieved source item's ID
+  prior.candidates[0].item.title="Earlier unlinked description";
+  const result=await runWatch(spec(),{ledger:prior,now,fetchImpl:fakeFetch().fetchImpl,
+    previousScreening:{ledger:{searches:[],candidates:[]},
+      protocol:{id:"unlinked-history",stage:"title-abstract",criteria:["out-of-scope"]}}});
+  const impact=result.screeningContinuity;
+  assert.equal(result.changes.candidateSourceRevisions.length,1);
+  assert.equal(impact.heldUnqualifiedSourceRevisions.length,1);
+  assert.equal(impact.heldUnqualifiedSourceRevisions[0].priorSearchId,
+    "openalex::2026-08-01::long covid");
+  assert.deepEqual(impact.reassessmentRecordIds,[]);
+  assert.equal(impact.unlinkedPriorCandidates.length,2);
+  assert.equal(impact.newRecordCandidates.length,3);
+});
+
+test("foreign previous-screening evidence refuses before any research-source network request",async()=>{
+  const network=fakeFetch();const prior=originalLedger();
+  const forged={ledger:{searches:[],candidates:[]},
+    protocol:{id:"foreign-screening",stage:"title-abstract",criteria:["irrelevant"]},
+    reviews:[{id:"r1",recordId:"doi:10.1000/watchtest.001",reviewerId:"invented",decision:"include",
+      evidence:{searchId:"unknown",itemId:"missing",field:"title",start:0,end:2,quote:"No"}}]};
+  await assert.rejects(runWatch(spec(),{ledger:prior,now,fetchImpl:network.fetchImpl,
+    previousScreening:forged}),/missing original source group/);
+  assert.equal(network.seen.length,0);
+});
