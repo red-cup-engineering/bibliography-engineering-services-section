@@ -9,7 +9,7 @@ const hash=s=>{const bytes=Buffer.from(s,"utf8");return createHash("sha1").updat
 const cols=["record_id","pubmedID","title","authors","abstract","year","label_included","label_abstract_screening"];
 const sourceFor=ordinal=>encodeCsv(Array.from({length:30},(_,i)=>({
  record_id:String(i+1),pubmedID:String(100000+100*ordinal+i),
- title:i===0?"A source study":"Other topic article",
+ title:i===0?"Topic article review":"Other unrelated study",
  authors:"Independent Source",abstract:"Bibliographic body observation",
  year:"2006",label_included:i===0||i===29?"1":"0",
  label_abstract_screening:i===0||i===29?"1":"0"
