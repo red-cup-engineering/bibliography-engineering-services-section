@@ -5,6 +5,7 @@ on:
       - "src/screening-stopping-assay.mjs"
       - "src/screening-endpoint-pilot.mjs"
       - "scripts/reproduce-cohen-stopping-study.mjs"
+      - "scripts/verify-cohen-stopping-replay.py"
       - "scripts/reproduce-cohen-screening-pilot.mjs"
       - "test/screening-stopping-*.test.mjs"
       - "research/source-pins/cohen-2006-prospective-stopping-preregistration.json"
@@ -16,6 +17,7 @@ on:
       - "src/screening-stopping-assay.mjs"
       - "src/screening-endpoint-pilot.mjs"
       - "scripts/reproduce-cohen-stopping-study.mjs"
+      - "scripts/verify-cohen-stopping-replay.py"
       - "scripts/reproduce-cohen-screening-pilot.mjs"
       - "test/screening-stopping-*.test.mjs"
       - "research/source-pins/cohen-2006-prospective-stopping-preregistration.json"
@@ -83,6 +85,8 @@ jobs:
             }
             console.log("Aggregate",JSON.stringify(a.aggregate));
           '
+      - name: Independently reacquire pinned public sources and rederive all 18 decisions in Python
+        run: python3 scripts/verify-cohen-stopping-replay.py cohen-stopping-study.json
       - uses: actions/upload-artifact@v4
         with:
           name: cohen-source-qualified-sequential-stop-assay
