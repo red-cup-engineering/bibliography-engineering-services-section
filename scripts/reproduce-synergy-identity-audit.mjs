@@ -41,6 +41,11 @@ export async function reproduceSynergyIdentityAudit({manifest,fetchImpl=fetch}={
     openAlexIdentities:studies.reduce((s,r)=>s+r.identity.uniqueOpenAlex,0),
     conflictingIdentityGroups:studies.reduce((s,r)=>s+r.identity.conflictingLabelGroups,0),
     excludedByUnmatchedOpenAlex:studies.reduce((s,r)=>s+r.raw.missingOpenAlex,0),
+    conflictMethodContrast:Object.fromEntries([
+      "sameNamedMethodGroups","differentNamedMethodGroups","bothKindsGroups",
+      "sameNamedOnlyGroups","differentNamedOnlyGroups","methodUnattributedGroups",
+    ].map(key=>[key,studies.reduce((sum,study)=>
+      sum+study.identity.conflictMethodContrast[key],0)])),
   };
   return {
     type:"CrossDisciplinaryLabeledBenchmarkSourceAudit",version:1,
