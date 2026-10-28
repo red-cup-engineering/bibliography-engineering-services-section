@@ -26,6 +26,8 @@ function watch(old, {revisions=[],extra=[],refusals=[],searchIds=['oa-2']}={}){
     query:'example',date:'2026-10-27',resultCount:extra.filter(c=>c.searchId===id).length}));
   const ledger={searches:[...clone(old.searches),...newSearches],candidates:[...clone(old.candidates),...extra]};
   return {type:'RecordedLiteratureWatchResult',version:1,ledger,screeningInputLedger:clone(ledger),
+    summary:{received:searchIds.length,priorUnlinkedCandidateReceipts:0},
+    unlinkedPriorCandidates:[],
     changes:{newCandidateReceipts:clone(extra),candidateSourceRevisions:revisions,newWorkIdentityKeys:[]},refusals};
 }
 function revision(old,changes={},candidateOverrides={}){
