@@ -41,7 +41,9 @@
     "./cohen-screening-pilot-preregistration.json": "./research/source-pins/cohen-2006-text-screening-pilot-preregistration.json",
     "./screening-stopping-assay": "./src/screening-stopping-assay.mjs",
     "./scripts/reproduce-cohen-stopping-study.mjs": "./scripts/reproduce-cohen-stopping-study.mjs",
-    "./cohen-stopping-preregistration.json": "./research/source-pins/cohen-2006-prospective-stopping-preregistration.json"
+    "./cohen-stopping-preregistration.json": "./research/source-pins/cohen-2006-prospective-stopping-preregistration.json",
+    "./screening-continuity": "./src/screening-continuity.mjs",
+    "./scripts/review-screening-continuity.mjs": "./scripts/review-screening-continuity.mjs"
   },
   "bin": {
     "bibliography": "./apps/bibliography-cli.mjs"

@@ -20,13 +20,14 @@ import { searchRegister } from "../src/register.mjs";
 import { assessCslRecordedScreening } from "../src/reference-screening-csl.mjs";
 import { boundFiniteScreeningRecall } from "../src/reference-screening.mjs";
 import { runWatch } from "../src/reference-watch.mjs";
+import { assessScreeningContinuity } from "../src/screening-continuity.mjs";
 import { auditLabeledIdentifierCarrier } from "../src/labeled-benchmark-audit.mjs";
 import { admitSourceRecord, checkNote, uncitedRows, readSourceRecord, recordRead, recordSearch, writeNoteReferences } from "../src/source-record.mjs";
 
 /** @returns {string} the usage block, one verb per line, each stating what it reads on stdin */
 function usage() {
   return [
-    "usage: bibliography <render|read|recognize|admit|write|collect|project|parse|import-csl|project-csl|resolve-doi|search-openalex|fetch-openalex|search-pubmed|fetch-pubmed-summaries|search-register|record-search|record-read|record-check|record-references|screen-review|watch-literature|benchmark-audit|recall-bound> [path]",
+    "usage: bibliography <render|read|recognize|admit|write|collect|project|parse|import-csl|project-csl|resolve-doi|search-openalex|fetch-openalex|search-pubmed|fetch-pubmed-summaries|search-register|record-search|record-read|record-check|record-references|screen-review|watch-literature|screen-continuity|benchmark-audit|recall-bound> [path]",
     "",
     "  render         renders a bibliography record to Markdown; reads a bibliography record JSON object on stdin",
     "  read           reads one admitted bibliography by path, given as argv[3]; reads nothing on stdin",
@@ -54,6 +55,7 @@ function usage() {
     "  screen-review            validate CSL identity and dual-review evidence; read {ledger,protocol,reviews,adjudications} JSON on stdin",
     "  recall-bound             compute exact worst-case recall within a hypothetically closed finite candidate set; stdin {included,excluded,unresolved,targetNumerator?,targetDenominator?}; never authorizes stopping",
     "  watch-literature         run one bounded public metadata watch against OpenAlex/PubMed; read {spec,ledger,now} JSON on stdin",
+    "  screen-continuity       reassess old screening evidence after source watch; stdin {previous,watchResult}; emits impacted decision IDs",
     "  benchmark-audit          refuse unsupported unique gold labels; read {rawText,provenance} JSON on stdin",
     "",
     "  -h, --help     print this usage block and exit 0",
@@ -91,6 +93,7 @@ switch (command) {
   case "screen-review": result = assessCslRecordedScreening(input()); break;
   case "recall-bound": result = boundFiniteScreeningRecall(input()); break;
   case "benchmark-audit": result = auditLabeledIdentifierCarrier(input()); break;
+  case "screen-continuity": result = assessScreeningContinuity(input()); break;
   case "watch-literature": { const request=input(); result=await runWatch(request.spec,{ledger:request.ledger,now:request.now,mailto:request.mailto,email:request.email,delayBetweenQueriesMs:1200});break;}
   case "search-register": {
     const variables = Object.fromEntries(process.argv.slice(4).map((arg) => [arg.slice(0, arg.indexOf("=")), arg.slice(arg.indexOf("=") + 1)]));

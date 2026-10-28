@@ -3,6 +3,9 @@ on:
   pull_request:
     paths:
       - 'src/reference-screening*.mjs'
+      - 'src/screening-continuity.mjs'
+      - 'scripts/review-screening-continuity.mjs'
+      - 'test/screening-continuity.test.mjs'
       - 'test/reference-screening*.test.mjs'
       - 'scripts/screen-candidates.mjs'
       - 'apps/bibliography-cli.mjs'
@@ -33,7 +36,9 @@ jobs:
         run: |
           node --check src/reference-screening.mjs
           node --check scripts/screen-candidates.mjs
-          node --test test/reference-screening.test.mjs test/screen-candidates-cli.test.mjs
+          node --check src/screening-continuity.mjs
+          node --check scripts/review-screening-continuity.mjs
+          node --test test/reference-screening.test.mjs test/screen-candidates-cli.test.mjs test/screening-continuity.test.mjs
   original-package-integration:
     runs-on: ubuntu-latest
     timeout-minutes: 10
