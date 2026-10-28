@@ -149,6 +149,23 @@ queries, source names and result counts.
   canonical ordering, null searches and refusal behavior.
   test/reference-screening-csl.test.mjs checks the authentic CSL adapter.
 
+**Reconciled search counts:** the original archived fixture has 6 total
+reported hits and 6 total candidate receipts, yet one OpenAlex source
+records **3 receipts against 2 reported hits**, while one PubMed source
+records only **2 against 3**. Aggregate totals cancel the discrepancies.
+The reducer now returns perSearchReconciliation, explicit excess and
+unrecorded counts, and releaseQualification.sourceCountReconciled=false.
+That finding is a *metadata/audit consistency failure in a mixed demonstration
+fixture*, not a discovery about OpenAlex or PubMed's real indexes.
+
+**Machine contract:** schemas/bibliography/source-witnessed-review-request.schema.json
+defines the JSON Schema 2020-12 buyer/agent request and is a package export.
+It types the protocol, recorded search, citations, reviewer votes, evidence
+spans and adjudication records. Schema validation does not attest that the
+quoted excerpt actually appears in a source; the executable operation checks
+the UTF-16 offsets against the supplied original metadata. No arbitrary
+publisher-identity grant, reviewer authentication or full-text license
+comes from passing this schema. See the native schema regression tests.
 Reproduction (Node 22+, no installed private dependencies for the pure check):
 
 ```sh
