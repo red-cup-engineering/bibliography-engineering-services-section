@@ -204,15 +204,41 @@ fail-closed source-span/reviewer/identity refusal and deterministic
 reproduction. A future comparison requires a preregistered held-out
 reference corpus and identical buyer tasks, not speculative feature counts.
 
-### Literature-watch state (not yet implemented)
+### Replayable on-demand literature discovery (implemented; not an alert daemon)
 
-The older design claimed a src/reference-watch.mjs, scripts/watch-literature.mjs
-and named WatchSpec files. These are absent in the current repository.
-The existing OpenAlex/PubMed retrieval functions accept date filters,
-but there is no admitted multi-source watch/alert receiver or executed
-change-triggered literature-screening process here. Do not sell or
-advertise that feature until its native input corpus, acquisition
-rights, update/witness flow and tests actually exist.
+`src/reference-watch.mjs` now implements `dateWindow` and `runWatch` over the original bibliography ledger, using the existing OpenAlex and PubMed search and PubMed summary adapters, and the canonical CSL-JSON dedupe key. A caller explicitly supplies a bounded `WatchSpec`, the earlier `{searches,candidates}` ledger and an **offset-aware UTC observation instant**. Query dates are **one through 30 days inclusive**; one run permits one through four typed public metadata queries with capped 25-item first pages. It is a single **read-only acquisition call**, not a recurring scheduled job, credentialed monitoring service, full-text harvesting, or a cross-source accuracy theorem.
+
+```json
+{
+  "spec": {
+    "id": "library-science-publication-watch",
+    "lookbackDays": 7,
+    "queries": [
+      { "source": "openalex", "query": "scientific metadata reproducibility" },
+      { "source": "pubmed", "query": "research transparency" }
+    ]
+  },
+  "ledger": { "searches": [], "candidates": [] },
+  "now": "2026-10-27T20:00:00Z"
+}
+```
+
+```sh
+# Read only: stdin request, stdout result including a proposed updated ledger.
+node scripts/watch-literature.mjs < watch-request.json > watch-result.json
+# Or use the original bibliography command:
+bibliography watch-literature < watch-request.json
+# Reproduce the recorded OpenAlex and PubMed responses without network:
+node --test test/reference-watch.test.mjs
+```
+
+Machine input: `schemas/bibliography/literature-watch-request.schema.json` (package export). The result carries an explicit source/time window; per-search query, count, returned-page limit and status; source-normalized new and repeated citation receipts; newly encountered DOI/title identity **candidates** awaiting review; possible source metadata edition changes that require reassessment; and provider failures as **refusals**, never fake zero-result searches. It returns `screeningInputLedger` that the existing dual-review assay can consume. `ledger` preserves the complete old receipt history without rewriting original entries.
+
+**Recovered data-integrity obstruction:** The historical `test/fixtures/watch-ledger.json` contains two example candidates with search IDs but `searches: []`, so their original source retrieval receipts are missing. The watch retains them in custody and reports `unlinkedPriorCandidates`; it cannot invent their acquisition events. These unqualified historical candidates do **not** enter `screeningInputLedger` until a real receiving source supplies a recorded search. The archive fixtures are **synthetic examples**, not new real 2026 scientific papers.
+
+A repeated query on the same date is refused as already observed and performs no new network request. A repeated paper from another indexed source may add a new **bibliographic source receipt** without becoming a second original work or independent scientific witness. A changed title or metadata field generates `candidateSourceRevisions`, not a claimed correction or retraction. PubMed/OpenAlex metadata do not certify complete article text, consent, source-rights for republication, scientific validity or a true retraction. Partial first-page coverage is explicit when the source reports more hits than were retrieved.
+
+**Agentic integration boundaries:** A research agent may run the original retrieval operation and pass only newly admitted source-linked candidates to `bibliography screen-review`, then to original Science for warranted claim decisions and original Coesite research operations for actual repeated execution. Durable storage, source reconciliation, cost, approved human/editorial authority, network credentials, run scheduling, citation-context classification and external paid research orders are **not installed** by this module. For continuous autonomous watches, assign this pure, bounded run to the existing authenticated Operations Work scheduler rather than launch a second cron system or invent a self-authorizing research agent.
 
 ### Registers and source records
 
