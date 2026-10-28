@@ -1,0 +1,40 @@
+{
+  "type": "ExternalLabeledBibliographyIdentityAuditManifest",
+  "version": 1,
+  "sourceOwner": "asreview/synergy-dataset",
+  "sourceCommit": "dc2dadfdbb98eb1b4259604789abd640aa3b693e",
+  "sourceRepoLicense": "CC0-1.0 (repository-level; original review/dataset and metadata licenses can differ)",
+  "sourceLink": "https://github.com/asreview/synergy-dataset",
+  "datasetRightsBoundary": "Only aggregate research results and identifiers of conflicting works are projected; source CSVs are fetched for reproducibility, not copied or sublicensed.",
+  "datasetSourceLabelMeaning": "label_included is an upstream recorded include/exclude judgment, not an independent physical or human-verified fact.",
+  "publishedCountsSource": "https://github.com/asreview/synergy-dataset/blob/dc2dadfdbb98eb1b4259604789abd640aa3b693e/README.md",
+  "profiles": [
+    {
+      "corpus": "Sep_2021",
+      "path": "datasets/Sep_2021/Sep_2021_ids.csv",
+      "gitBlobSha1": "ec7f5e54add8576deeba964f231e8bb3f76d1b2a",
+      "sourceCommit": "dc2dadfdbb98eb1b4259604789abd640aa3b693e",
+      "publishedBenchmarkRecords": 271,
+      "publishedIncluded": 40,
+      "discipline": "psychology"
+    },
+    {
+      "corpus": "Donners_2021",
+      "path": "datasets/Donners_2021/Donners_2021_ids.csv",
+      "gitBlobSha1": "3249682f27478bd47706e1adf75ba38999eee82a",
+      "sourceCommit": "dc2dadfdbb98eb1b4259604789abd640aa3b693e",
+      "publishedBenchmarkRecords": 258,
+      "publishedIncluded": 15,
+      "discipline": "medicine"
+    },
+    {
+      "corpus": "Smid_2020",
+      "path": "datasets/Smid_2020/Smid_2020_ids.csv",
+      "gitBlobSha1": "5514926d02e51a01ca8482c8025ac30bd5383a10",
+      "sourceCommit": "dc2dadfdbb98eb1b4259604789abd640aa3b693e",
+      "publishedBenchmarkRecords": 2627,
+      "publishedIncluded": 27,
+      "discipline": "computer-science-and-mathematics"
+    }
+  ]
+}
