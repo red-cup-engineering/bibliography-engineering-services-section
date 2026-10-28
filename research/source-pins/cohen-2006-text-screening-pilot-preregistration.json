@@ -1,0 +1,85 @@
+{
+  "type": "PreRegisteredSourceQualifiedScreeningPilot",
+  "version": 1,
+  "date": "2026-10-27",
+  "studyOwner": "lenticule-science/library-science-services-section/issues/1",
+  "engineeringOwner": "red-cup-engineering/bibliography-engineering-services-section",
+  "claim": "One frozen topic-query title/abstract BM25 baseline versus predeclared seeded random permutations on 3 text-bearing retrospective research topics; effect size and null results are retained.",
+  "priorArt": [
+    "Okapi BM25 information retrieval; no novel mathematical theorem",
+    "ASReview active learning not implemented or measured",
+    "Cohen 2006 bibliographic systematic-review benchmark: DOI 10.1197/jamia.M1929"
+  ],
+  "corpusOwner": "LHofstee/systematic-review-datasets",
+  "upstreamCommit": "ee5f9a88cbf7945c2d6d679385f8605f28b298e9",
+  "sourceRights": "The fork's index.csv reports 'custom open license' for each Cohen task. Only authorized metadata analysis and aggregate summaries; do not republish original abstracts or license commercially without independent original terms review.",
+  "precommitted": true,
+  "tasks": [
+    {
+      "key": "Antihistamines",
+      "gitBlobSha1": "755bded91ae2fe22873325572f4dde5ac05d46d3",
+      "reportedRows": 310,
+      "reportedFinalIncluded": 16,
+      "query": "antihistamine histamine allergy allergic H1 receptor treatment",
+      "path": "datasets/Cohen_2006/output/online/Antihistamines.csv",
+      "origin": "https://github.com/LHofstee/systematic-review-datasets",
+      "sourceCommit": "ee5f9a88cbf7945c2d6d679385f8605f28b298e9",
+      "license": "custom open license (origin research source; no raw text redistribution in this assay)"
+    },
+    {
+      "key": "Estrogens",
+      "gitBlobSha1": "ce75e9dc8d4729e757dbfb8d7aaf70346f7372c2",
+      "reportedRows": 368,
+      "reportedFinalIncluded": 80,
+      "query": "estrogen hormone therapy replacement menopause postmenopausal",
+      "path": "datasets/Cohen_2006/output/online/Estrogens.csv",
+      "origin": "https://github.com/LHofstee/systematic-review-datasets",
+      "sourceCommit": "ee5f9a88cbf7945c2d6d679385f8605f28b298e9",
+      "license": "custom open license (origin research source; no raw text redistribution in this assay)"
+    },
+    {
+      "key": "UrinaryIncontinence",
+      "gitBlobSha1": "167b1db5435d74d87f3c37a31d01427195f6cab7",
+      "reportedRows": 327,
+      "reportedFinalIncluded": 40,
+      "query": "urinary incontinence bladder treatment pelvic randomized trial",
+      "path": "datasets/Cohen_2006/output/online/UrinaryIncontinence.csv",
+      "origin": "https://github.com/LHofstee/systematic-review-datasets",
+      "sourceCommit": "ee5f9a88cbf7945c2d6d679385f8605f28b298e9",
+      "license": "custom open license (origin research source; no raw text redistribution in this assay)"
+    }
+  ],
+  "selection": {
+    "includedTasks": [
+      "Antihistamines",
+      "Estrogens",
+      "UrinaryIncontinence"
+    ],
+    "reason": "Three bounded small text-bearing corpora from the same source collection; intentionally diverse drug-review topics, not independent disciplines, no cherry-picked tasks after model performance.",
+    "noExcludedTaskAfterPerformance": true
+  },
+  "labels": {
+    "stageOne": "label_abstract_screening",
+    "stageTwo": "label_included",
+    "noEquivalenceAssumed": true,
+    "unknown": "refuse nonbinary label; missing text remains visible and in denominators"
+  },
+  "metric": {
+    "endpoint": "retrospective ranking workload to encounter ceil(.95*total positives) with oracle-revealed labels",
+    "workSaved": "0.95 - inspected/N (fraction, may be negative)",
+    "recallAt20Pct": "positive labels in top ceil(.2*N) / total positive labels",
+    "randomSeeds": 128,
+    "randomAlgorithm": "Fisher-Yates with Xorshift32 seeded by 20261027 plus ordinal, deterministic; derive distribution and compare not a trained ASReview engine",
+    "query": "Frozen topical query, not tuned using inclusion labels",
+    "lexicalMethod": "BM25 k1=1.2,b=0.75 on title twice plus abstract once; ASCII lowercase words; ties by original PMID ascending; IDF from unlabeled corpus only",
+    "missingTitleAbstract": "source rows remain even if no text; score zero"
+  },
+  "limits": [
+    "All three tasks are drawn from one original Cohen review collection; cross-disciplinary generalization is not established.",
+    "Query terms are source-topic-informed but not learned from hidden labels.",
+    "The retrospective oracle metric knows total positives; it is not a production stopping rule.",
+    "No reviewer or vendor ASReview model actually benchmarked.",
+    "Source rights, including abstracts, are not inferred from the source fork's MIT code license.",
+    "This initial result has no prespecified superiority margin or claim of commercial parity."
+  ]
+}
