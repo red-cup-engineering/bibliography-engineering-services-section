@@ -58,3 +58,15 @@ test("unresolved identity conflicts must be counted as unresolved and never as i
  assert.ok(conservative.sharpWorstCaseRecall.value<.1);
  assert.equal(conservative.operativeStopAuthorized,false);
 });
+
+test("public bibliography command returns conditional proof while withholding native stop authority",async()=>{
+ const {spawnSync}=await import("node:child_process");
+ const cli=new URL("../apps/bibliography-cli.mjs",import.meta.url);
+ const child=spawnSync(process.execPath,[cli.pathname,"recall-bound"],{
+  encoding:"utf8",input:JSON.stringify({included:19,excluded:20,unresolved:1})
+ });
+ assert.equal(child.status,0,child.stderr);
+ const value=JSON.parse(child.stdout);
+ assert.equal(value.mathematicallyAtLeastTargetWithinAssumedClosedFrame,true);
+ assert.equal(value.operativeStopAuthorized,false);
+});
