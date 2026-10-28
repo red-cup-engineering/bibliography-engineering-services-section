@@ -112,3 +112,29 @@ test("malformed or nonexistent search provenance, repeated receipts and unstated
   assert.throws(()=>assessRecordedScreening({ledger:y,protocol:proto}),/duplicate original candidate receipt/);
   assert.throws(()=>assessRecordedScreening({ledger:ledger(),protocol:{...proto,criteria:[]}}),/uniquely named/);
 });
+
+test("per-source retrieval discrepancies cannot cancel out in a global search total",()=>{
+  const r=assessRecordedScreening({ledger:ledger(),protocol:proto});
+  // Actual original fixture: OpenAlex claims two search hits but three receipts;
+  // PubMed claims three hits but has two receipts, so aggregate 6-6 hides both.
+  assert.equal(r.flow.reportedHits,6);
+  assert.equal(r.flow.candidateReceipts,6);
+  assert.equal(r.flow.notRecordedFromReportedHits,1);
+  assert.equal(r.flow.excessReceiptsBeyondReportedHits,1);
+  assert.deepEqual(r.flow.sourceCountInconsistencies,["openalex::2026-08-30::deep learning"]);
+  assert.equal(r.releaseQualification.sourceCountReconciled,false);
+  assert.deepEqual(r.perSearchReconciliation.map(x=>x.discrepancy),[
+    "more-receipts-than-reported-hits","count-reconciled","partial-capture",
+  ]);
+});
+test("unknown title/abstract evidence stays pending instead of manufacturing a reviewer conflict",()=>{
+  const first={...a(),decision:"uncertain"};
+  const second={...b(),decision:"uncertain"};
+  const r=assessRecordedScreening({ledger:ledger(),protocol:proto,reviews:[first,second]});
+  assert.equal(r.records.find(x=>x.recordId===doiId).status,"pending");
+  const third=vote("third",doiId,"reviewer-C","include",
+    "openalex::2026-08-30::deep learning","W1","Deep learning");
+  third.reviewIds=["vote-a","vote-b"];
+  assert.throws(()=>assessRecordedScreening({ledger:ledger(),protocol:proto,
+    reviews:[first,second],adjudications:[third]}),/uncertain votes require additional evidence/);
+});
