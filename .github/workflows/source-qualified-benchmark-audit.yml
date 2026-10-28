@@ -4,6 +4,7 @@ on:
     paths:
       - 'src/labeled-benchmark-audit.mjs'
       - 'scripts/reproduce-synergy-identity-audit.mjs'
+      - 'scripts/verify-synergy-method-witnesses-standalone.mjs'
       - 'test/labeled-benchmark*.test.mjs'
       - 'research/source-pins/**'
       - 'apps/bibliography-cli.mjs'
@@ -14,6 +15,7 @@ on:
     paths:
       - 'src/labeled-benchmark-audit.mjs'
       - 'scripts/reproduce-synergy-identity-audit.mjs'
+      - 'scripts/verify-synergy-method-witnesses-standalone.mjs'
       - 'test/labeled-benchmark*.test.mjs'
       - 'research/source-pins/**'
       - 'apps/bibliography-cli.mjs'
@@ -23,6 +25,23 @@ on:
 permissions:
   contents: read
 jobs:
+  source-only-independent-reproduction:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Test native source-identity and method evidence independently of the package registry
+        run: node --test test/labeled-benchmark-audit.test.mjs
+      - name: Independently fetch and source-hash exact three original SYNERGY corpora
+        run: node scripts/verify-synergy-method-witnesses-standalone.mjs > independently-verified-method-witnesses.json
+      - uses: actions/upload-artifact@v4
+        with:
+          name: independent-synergy-method-witnesses
+          path: independently-verified-method-witnesses.json
+          retention-days: 90
   reproduce-external-source-audit:
     runs-on: ubuntu-latest
     timeout-minutes: 12
