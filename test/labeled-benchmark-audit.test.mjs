@@ -79,3 +79,50 @@ test("unresolved source identities do not disappear from a denominator",()=>{
  assert.equal(r.raw.rawPositiveRows,2);
  assert.equal(r.identity.includedOnly,0);
 });
+
+test("contradictory review methods preserve same, different, both and unattributed witnesses",()=>{
+ const raw=[
+  "doi,openalex_id,label_included,method",
+  "https://doi.org/10.1000/a,https://openalex.org/W100,1,manual",
+  "https://doi.org/10.1000/a,https://openalex.org/W100,0,manual",
+  "https://doi.org/10.1000/a,https://openalex.org/W100,0,search_title",
+  "https://doi.org/10.1000/b,https://openalex.org/W200,1,id_retrieval_doi",
+  "https://doi.org/10.1000/b,https://openalex.org/W200,0,search_title",
+  "https://doi.org/10.1000/c,https://openalex.org/W300,1,manual",
+  "https://doi.org/10.1000/c,https://openalex.org/W300,0,manual",
+  "https://doi.org/10.1000/d,https://openalex.org/W400,1,",
+  "https://doi.org/10.1000/d,https://openalex.org/W400,0,id_retrieval_doi",
+ ].join("\n")+"\n";
+ const result=audit({rawText:raw,provenance:provenance(raw)});
+ assert.equal(result.identity.conflictingLabelGroups,4);
+ assert.deepEqual(result.identity.conflictMethodContrast,{
+   sameNamedMethodGroups:2,differentNamedMethodGroups:2,
+   bothKindsGroups:1,sameNamedOnlyGroups:1,differentNamedOnlyGroups:1,
+   methodUnattributedGroups:1,
+ });
+ const byId=Object.fromEntries(result.identity.conflictingGroups.map(g=>[g.identity,g]));
+ const W=id=>byId["https://openalex.org/W"+id].methodOppositions;
+ assert.equal(W(100).sameNamedMethod,true);
+ assert.equal(W(100).differentNamedMethod,true);
+ assert.deepEqual(W(100).negativeMethods,["manual","search_title"]);
+ assert.equal(W(200).sameNamedMethod,false);
+ assert.equal(W(200).differentNamedMethod,true);
+ assert.equal(W(300).sameNamedMethod,true);
+ assert.equal(W(300).differentNamedMethod,false);
+ assert.equal(W(400).containsUnattributedMethod,true);
+ assert.equal(W(400).sameNamedMethod,false);
+ assert.equal(W(400).differentNamedMethod,false);
+ assert.equal(result.authorization.validForTrainingWithoutAdjudication,false);
+});
+test("older source without a method column is not assigned fictional review methods",()=>{
+ const raw=[
+  "doi,openalex_id,label_included",
+  "https://doi.org/10.1000/a,https://openalex.org/W100,1",
+  "https://doi.org/10.1000/a,https://openalex.org/W100,0",
+ ].join("\n")+"\n";
+ const result=audit({rawText:raw,provenance:provenance(raw)});
+ assert.equal(result.identity.conflictingLabelGroups,1);
+ assert.equal(result.identity.conflictMethodContrast.methodUnattributedGroups,1);
+ assert.equal(result.identity.conflictMethodContrast.sameNamedMethodGroups,0);
+ assert.equal(result.identity.conflictMethodContrast.differentNamedMethodGroups,0);
+});

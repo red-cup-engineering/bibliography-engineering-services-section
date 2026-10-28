@@ -4,6 +4,7 @@ on:
     paths:
       - 'src/labeled-benchmark-audit.mjs'
       - 'scripts/reproduce-synergy-identity-audit.mjs'
+      - 'scripts/verify-synergy-method-witnesses-standalone.mjs'
       - 'test/labeled-benchmark*.test.mjs'
       - 'research/source-pins/**'
       - 'apps/bibliography-cli.mjs'
@@ -14,6 +15,7 @@ on:
     paths:
       - 'src/labeled-benchmark-audit.mjs'
       - 'scripts/reproduce-synergy-identity-audit.mjs'
+      - 'scripts/verify-synergy-method-witnesses-standalone.mjs'
       - 'test/labeled-benchmark*.test.mjs'
       - 'research/source-pins/**'
       - 'apps/bibliography-cli.mjs'
@@ -23,6 +25,23 @@ on:
 permissions:
   contents: read
 jobs:
+  source-only-independent-reproduction:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Test native source-identity and method evidence independently of the package registry
+        run: node --test test/labeled-benchmark-audit.test.mjs
+      - name: Independently fetch and source-hash exact three original SYNERGY corpora
+        run: node scripts/verify-synergy-method-witnesses-standalone.mjs > independently-verified-method-witnesses.json
+      - uses: actions/upload-artifact@v4
+        with:
+          name: independent-synergy-method-witnesses
+          path: independently-verified-method-witnesses.json
+          retention-days: 90
   reproduce-external-source-audit:
     runs-on: ubuntu-latest
     timeout-minutes: 12
@@ -66,6 +85,27 @@ jobs:
             if(d.totals.conflictingIdentityGroups!==36 ||
                d.totals.rawRows!==4913 ||
                d.totals.openAlexIdentities!==3156) throw Error("Cross-domain audit totals drifted");
+            // Independent pre-implementation count over the unchanged original
+            // 2026-10-27 source edition, obtained from method-tagged opposite-
+            // label pairs. This is exploratory retrieval-method provenance,
+            // not source adjudication or evidence of an algorithmic cause.
+            const expectedMethods={
+              Sep_2021:[0,0,0,0,0,0],
+              Donners_2021:[14,10,9,5,1,0],
+              Smid_2020:[7,17,3,4,14,0],
+            };
+            const fields=["sameNamedMethodGroups","differentNamedMethodGroups",
+              "bothKindsGroups","sameNamedOnlyGroups","differentNamedOnlyGroups",
+              "methodUnattributedGroups"];
+            for(const [corpus,expected] of Object.entries(expectedMethods)){
+              const actual=d.studies.find(s=>s.provenance.corpus===corpus)?.identity.conflictMethodContrast;
+              if(!actual||fields.some((field,i)=>actual[field]!==expected[i]))
+                throw Error("Retrieval-method witness discrepancy in "+corpus);
+            }
+            const totals=d.totals.conflictMethodContrast;
+            if(!totals||fields.some((field,i)=>totals[field]!==
+              Object.values(expectedMethods).reduce((n,counts)=>n+counts[i],0)))
+              throw Error("Aggregated retrieval-method witnesses disagree");
           '
       - uses: actions/upload-artifact@v4
         with:
