@@ -66,6 +66,27 @@ jobs:
             if(d.totals.conflictingIdentityGroups!==36 ||
                d.totals.rawRows!==4913 ||
                d.totals.openAlexIdentities!==3156) throw Error("Cross-domain audit totals drifted");
+            // Independent pre-implementation count over the unchanged original
+            // 2026-10-27 source edition, obtained from method-tagged opposite-
+            // label pairs. This is exploratory retrieval-method provenance,
+            // not source adjudication or evidence of an algorithmic cause.
+            const expectedMethods={
+              Sep_2021:[0,0,0,0,0,0],
+              Donners_2021:[14,10,9,5,1,0],
+              Smid_2020:[7,17,3,4,14,0],
+            };
+            const fields=["sameNamedMethodGroups","differentNamedMethodGroups",
+              "bothKindsGroups","sameNamedOnlyGroups","differentNamedOnlyGroups",
+              "methodUnattributedGroups"];
+            for(const [corpus,expected] of Object.entries(expectedMethods)){
+              const actual=d.studies.find(s=>s.provenance.corpus===corpus)?.identity.conflictMethodContrast;
+              if(!actual||fields.some((field,i)=>actual[field]!==expected[i]))
+                throw Error("Retrieval-method witness discrepancy in "+corpus);
+            }
+            const totals=d.totals.conflictMethodContrast;
+            if(!totals||fields.some((field,i)=>totals[field]!==
+              Object.values(expectedMethods).reduce((n,counts)=>n+counts[i],0)))
+              throw Error("Aggregated retrieval-method witnesses disagree");
           '
       - uses: actions/upload-artifact@v4
         with:
