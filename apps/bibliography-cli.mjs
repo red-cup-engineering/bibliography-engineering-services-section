@@ -18,6 +18,7 @@ import { searchPubmed } from "../scripts/search-pubmed.mjs";
 import { fetchPubmedSummaries } from "../scripts/fetch-pubmed-summaries.mjs";
 import { searchRegister } from "../src/register.mjs";
 import { assessCslRecordedScreening } from "../src/reference-screening-csl.mjs";
+import { boundFiniteScreeningRecall } from "../src/reference-screening.mjs";
 import { runWatch } from "../src/reference-watch.mjs";
 import { auditLabeledIdentifierCarrier } from "../src/labeled-benchmark-audit.mjs";
 import { admitSourceRecord, checkNote, uncitedRows, readSourceRecord, recordRead, recordSearch, writeNoteReferences } from "../src/source-record.mjs";
@@ -25,7 +26,7 @@ import { admitSourceRecord, checkNote, uncitedRows, readSourceRecord, recordRead
 /** @returns {string} the usage block, one verb per line, each stating what it reads on stdin */
 function usage() {
   return [
-    "usage: bibliography <render|read|recognize|admit|write|collect|project|parse|import-csl|project-csl|resolve-doi|search-openalex|fetch-openalex|search-pubmed|fetch-pubmed-summaries|search-register|record-search|record-read|record-check|record-references|screen-review|watch-literature|benchmark-audit> [path]",
+    "usage: bibliography <render|read|recognize|admit|write|collect|project|parse|import-csl|project-csl|resolve-doi|search-openalex|fetch-openalex|search-pubmed|fetch-pubmed-summaries|search-register|record-search|record-read|record-check|record-references|screen-review|watch-literature|benchmark-audit|recall-bound> [path]",
     "",
     "  render         renders a bibliography record to Markdown; reads a bibliography record JSON object on stdin",
     "  read           reads one admitted bibliography by path, given as argv[3]; reads nothing on stdin",
@@ -51,6 +52,7 @@ function usage() {
     "  record-references        derives each note's references: from the source record (argv[3]); --write writes them, otherwise prints them",
     "",
     "  screen-review            validate CSL identity and dual-review evidence; read {ledger,protocol,reviews,adjudications} JSON on stdin",
+    "  recall-bound             compute exact worst-case recall within a hypothetically closed finite candidate set; stdin {included,excluded,unresolved,targetNumerator?,targetDenominator?}; never authorizes stopping",
     "  watch-literature         run one bounded public metadata watch against OpenAlex/PubMed; read {spec,ledger,now} JSON on stdin",
     "  benchmark-audit          refuse unsupported unique gold labels; read {rawText,provenance} JSON on stdin",
     "",
@@ -87,6 +89,7 @@ switch (command) {
     break;
   }
   case "screen-review": result = assessCslRecordedScreening(input()); break;
+  case "recall-bound": result = boundFiniteScreeningRecall(input()); break;
   case "benchmark-audit": result = auditLabeledIdentifierCarrier(input()); break;
   case "watch-literature": { const request=input(); result=await runWatch(request.spec,{ledger:request.ledger,now:request.now,mailto:request.mailto,email:request.email,delayBetweenQueriesMs:1200});break;}
   case "search-register": {
