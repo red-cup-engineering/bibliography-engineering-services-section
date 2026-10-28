@@ -80,7 +80,8 @@ test("fabricated excerpt and wrong source or invalid criterion are rejected",()=
 test("DOI metadata conflict is not laundered into an admitted article",()=>{
   const input=ledger();
   input.candidates[1].item.title="An unrelated paper with the same DOI";
-  const r=assessRecordedScreening({ledger:input,protocol:proto,reviews:[a(),b()]});
+  // Title mismatch is detectable before any reviewer supplies source-specific excerpts.
+  const r=assessRecordedScreening({ledger:input,protocol:proto});
   assert.equal(r.records.find(x=>x.recordId===doiId).status,"identity-conflict");
   assert.equal(r.flow["identity-conflict"],1);
 });
