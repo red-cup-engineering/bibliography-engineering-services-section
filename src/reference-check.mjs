@@ -57,6 +57,45 @@ function unavailableError(error, source, code = networkErrorCode(error) ?? "sour
 }
 
 /**
+ * An AbortSignal.timeout alone uses an unref'ed timer in Node, so a stalled
+ * source (or a synthetic fetch ignoring abort) can leave an unresolved Promise
+ * while the event loop exits. A ref'ed deadline is the actual budget witness.
+ * All resources are released after this one attempt, including success.
+ */
+async function fetchWithinDeadline(fetchImpl, input, init, timeoutMs) {
+  const controller = new AbortController();
+  const upstream = init.signal;
+  let timer;
+  let onUpstreamAbort;
+  const aborted = new Promise((_, reject) => {
+    if (!upstream) return;
+    onUpstreamAbort = () => {
+      const reason = upstream.reason ?? new DOMException("citation source aborted", "AbortError");
+      controller.abort(reason);
+      reject(reason);
+    };
+    if (upstream.aborted) onUpstreamAbort();
+    else upstream.addEventListener("abort", onUpstreamAbort, {once:true});
+  });
+  const deadline = new Promise((_, reject) => {
+    timer = setTimeout(() => {
+      const reason = new DOMException("citation source timed out", "TimeoutError");
+      controller.abort(reason);
+      reject(reason);
+    }, Math.max(1, Math.floor(timeoutMs)));
+  });
+  try {
+    return await Promise.race([
+      Promise.resolve().then(() => fetchImpl(input,{...init,signal:controller.signal})),
+      deadline, aborted,
+    ]);
+  } finally {
+    clearTimeout(timer);
+    if (upstream && onUpstreamAbort) upstream.removeEventListener("abort",onUpstreamAbort);
+  }
+}
+
+/**
  * Apply the bibliography market's bounded retry and timeout policy to fetch. Every request made
  * through one policy shares its answer budget: a request starts only with budget left, waits for
  * at most what remains, and honors a source's Retry-After only when it is short and fits; past
@@ -69,10 +108,8 @@ export function reliableBibliographyFetch(fetchImpl, { timeoutMs = REQUEST_TIMEO
     for (let attempt = 0; attempt < 2; attempt += 1) {
       const remaining = until - now();
       if (remaining <= 0) throw unavailableError(new Error("answer budget spent"), source, "ETIMEDOUT");
-      const timeout = AbortSignal.timeout(Math.min(timeoutMs, remaining));
-      const signal = init.signal === undefined ? timeout : AbortSignal.any([init.signal, timeout]);
       try {
-        const response = await fetchImpl(input, { ...init, signal });
+        const response = await fetchWithinDeadline(fetchImpl, input, init, Math.min(timeoutMs, remaining));
         const retryableStatus = response?.status === 429 || response?.status >= 500;
         if (!retryableStatus) return response;
         const wait = retryAfterMilliseconds(response);
