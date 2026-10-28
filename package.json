@@ -1,6 +1,6 @@
 {
   "name": "@red-cup-engineering/bibliography-engineering-services-section",
-  "version": "0.8.0",
+  "version": "0.9.0",
   "type": "module",
   "description": "Engineering policy and operations for depth-2 bibliography Markdown carriers and the depth-1 references: maps they reconcile against across a science section's carrier corpus, plus bibliographic-record retrieval (OpenAlex, PubMed, CrossRef) and systematic-review screening of the candidates it surfaces.",
   "repository": {
@@ -33,7 +33,10 @@
     "./source-witnessed-review-request.schema.json": "./schemas/bibliography/source-witnessed-review-request.schema.json",
     "./watch": "./src/reference-watch.mjs",
     "./scripts/watch-literature.mjs": "./scripts/watch-literature.mjs",
-    "./literature-watch-request.schema.json": "./schemas/bibliography/literature-watch-request.schema.json"
+    "./literature-watch-request.schema.json": "./schemas/bibliography/literature-watch-request.schema.json",
+    "./benchmark-audit": "./src/labeled-benchmark-audit.mjs",
+    "./scripts/reproduce-synergy-identity-audit.mjs": "./scripts/reproduce-synergy-identity-audit.mjs",
+    "./synergy-identity-profiles.json": "./research/source-pins/synergy-2026-benchmark-identity-profiles.json"
   },
   "bin": {
     "bibliography": "./apps/bibliography-cli.mjs"
@@ -43,7 +46,8 @@
     "content/",
     "schemas/",
     "src/",
-    "scripts/"
+    "scripts/",
+    "research/"
   ],
   "engines": {
     "node": ">=22"
