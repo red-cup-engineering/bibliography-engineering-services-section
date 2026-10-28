@@ -2,6 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { dateWindow, runWatch } from "../src/reference-watch.mjs";
+import { assessCslRecordedScreening } from "../src/reference-screening-csl.mjs";
 
 const fixture = name => JSON.parse(readFileSync(new URL("./fixtures/"+name,import.meta.url),"utf8"));
 const originalLedger = () => fixture("watch-ledger.json");
@@ -122,4 +123,21 @@ test("invalid watch commands, duplicate queries and foreign sources are refused 
   await assert.rejects(runWatch({...spec(),queries:[spec().queries[0],spec().queries[0]]},{ledger:originalLedger(),now,fetchImpl:network.fetchImpl}),/repeats/);
   await assert.rejects(runWatch({...spec(),queries:[{source:"google",query:"anything"}]},{ledger:originalLedger(),now,fetchImpl:network.fetchImpl}),/source\/query/);
   assert.equal(network.seen.length,0);
+});
+
+test("unlinked original fixture receipts stay in custody but cannot be laundered into screening evidence",async()=>{
+  const network=fakeFetch();
+  const r=await runWatch(spec(),{ledger:originalLedger(),now,fetchImpl:network.fetchImpl});
+  assert.equal(r.unlinkedPriorCandidates.length,2);
+  assert.equal(r.summary.priorUnlinkedCandidateReceipts,2);
+  assert.equal(r.summary.screeningReadyCandidateReceipts,4);
+  assert.equal(r.ledger.candidates.length,6);
+  assert.equal(r.screeningInputLedger.candidates.length,4);
+  const screened=assessCslRecordedScreening({ledger:r.screeningInputLedger,
+    protocol:{id:"queued-literature-screening-2026",stage:"title-abstract",criteria:["wrong-study-design"]}});
+  assert.equal(screened.flow.candidateReceipts,4);
+  assert.equal(screened.flow.screeningRecords,4);
+  assert.equal(screened.flow.pending,4);
+  assert.equal(screened.releaseQualification.reviewRecordsAllResolved,false);
+  assert.equal(screened.releaseQualification.reviewerIndependenceAuthenticated,false);
 });
