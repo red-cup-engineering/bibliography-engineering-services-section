@@ -240,6 +240,34 @@ A repeated query on the same date is refused as already observed and performs no
 
 **Agentic integration boundaries:** A research agent may run the original retrieval operation and pass only newly admitted source-linked candidates to `bibliography screen-review`, then to original Science for warranted claim decisions and original Coesite research operations for actual repeated execution. Durable storage, source reconciliation, cost, approved human/editorial authority, network credentials, run scheduling, citation-context classification and external paid research orders are **not installed** by this module. For continuous autonomous watches, assign this pure, bounded run to the existing authenticated Operations Work scheduler rather than launch a second cron system or invent a self-authorizing research agent.
 
+### Externally pinned research-benchmark identity audit (implemented)
+
+A screening engine cannot meaningfully measure recall against **unadjudicated raw labels** and treat repeated source rows as distinct papers. The original SYNERGY research project (ASReview, [dataset/source documentation](https://github.com/asreview/synergy-dataset)) provides independent review-selection labels. Its **raw identifier CSVs** are not the finalized text-rich analysis datasets.
+
+\`src/labeled-benchmark-audit.mjs\` introduces \`auditLabeledIdentifierCarrier({rawText,provenance})\`, a pure, source-locked assay of exactly this research-data quality boundary. It verifies the **original Git blob SHA-1 of the raw UTF-8 bytes**, also computes a SHA-256 research digest, requires a versioned upstream 40-hex Git commit and a correctly scoped identifier-file path, admits only a bounded restricted unquoted ID-CSV profile, and preserves source line numbers and exact OpenAlex work identities. It returns all unresolved contradictory labels, duplicate original identities, missing identifier observations, DOI/OpenAlex identity-map ambiguities and descriptive best/worst candidate inclusion counts **without manufacturing a gold label**. No raw source CSV is checked into the Engineering repository.
+
+\`scripts/reproduce-synergy-identity-audit.mjs\` independently fetches only the three immutable, source-pinned upstream source paths from \`raw.githubusercontent.com/asreview/synergy-dataset\`, uses the **original bibliography fetch/retry and timeout policy**, and refuses unexpected source bytes or provider failures instead of reporting fabricated zero results. The three-pin research manifest is \`research/source-pins/synergy-2026-benchmark-identity-profiles.json\`. The command \`bibliography benchmark-audit\` also accepts a direct \`{rawText,provenance}\` JSON input for an authorized benchmark study. The operator can regenerate the original-source aggregate:
+
+\`\`\`sh
+npm install --ignore-scripts
+node --test test/labeled-benchmark*.test.mjs
+node scripts/reproduce-synergy-identity-audit.mjs > synergy-identity-source-audit.json
+\`\`\`
+
+The research question is whether one original indexed scholarly work can appear with **both** positive and negative labels in a raw upstream screening corpus, and how identity resolution changes admissible sample denominators. The pinned SYNERGY upstream revision is \`dc2dadfdbb98eb1b4259604789abd640aa3b693e\`. Its official README declares **271** identified Sep 2021 studies (40 included), **258** Donners 2021 studies (15 included), and **2,627** Smid 2020 studies (27 included).
+
+| SYNERGY original ID carrier | Raw rows | Distinct OpenAlex work IDs | Label-conflicted work IDs | Raw rows lacking any DOI/OpenAlex/PMID |
+| --- | ---: | ---: | ---: | ---: |
+| Sep 2021 (psychology) | 273 | 271 | 0 | 0 |
+| Donners 2021 (medicine) | 660 | 258 | **15** | **157** |
+| Smid 2020 (mathematics/computing) | 3,980 | 2,627 | **21** | **1,035** |
+
+A **raw label conflict** means both 0 and 1 appear among source rows for one OpenAlex identifier. In Donners all 15 positive-labeled source records have such an opposing source row; in Smid 21 of 27 positive-labeled source records do. If a naive deduplicator chooses exclusion for a conflicting ID, it could erase every Donners raw positive and all but six Smid positives. **That is a counterfactual demonstration of bad benchmark admission, NOT a statement about ASReview's actual implemented deduplicator.** The fact that unique OpenAlex identity counts equal published benchmark sizes is an important cross-check, but does not prove the original dataset compilation algorithm or independently authenticate labels.
+
+**Epistemic and rights boundaries.** These labels are reported systematic-review *inclusion decisions*, not scientific facts. An inclusion-plus-exclusion pair is not evidence that the **published systematic review** is scientifically contradictory; it can reflect overlapping acquisition and final dataset processing. We do not infer a resolved gold label or a full-text screening verdict. The pinned ID-only files do not contain title/abstract text sufficient to evaluate screening recall, an active-learning model or Elicit/ASReview accuracy. GitHub's SYNERGY repository is marked CC0, but source-specific data and original published work have distinct attribution and rights; this package republishes only aggregates, externally addressable scholarly IDs and software, not a vendor's paper corpus. Unknown and contradictory data remain typed, not silently repaired or promoted to verified truth.
+
+**Next independent scientific requirement:** acquire and rights-qualify the actual text-rich finalized dataset editions, original adjudication rules and benchmark study protocols; preregister train/test splits and held-out model/baseline comparison; then measure WSS@95, missed studies, reviewer interventions, time and cost. [Original Lenticule Library Science issue #1](https://github.com/lenticule-science/library-science-services-section/issues/1) owns that external performance experiment. An actual benchmark comparison or economic claim of beating ASReview remains **unverified**.
+
 ### Registers and source records
 
 - `src/register.mjs` — `searchRegister(register, variables)`. A register is
