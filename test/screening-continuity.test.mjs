@@ -111,7 +111,7 @@ test('forged previous source bytes fail closed',()=>{
 test('watch that rewrites a prior candidate in-place fails closed',()=>{
   const req=previous(),result=watch(req.ledger);
   result.screeningInputLedger.candidates[0].item.title='Silent overwrite';
-  assert.throws(()=>assessScreeningContinuity({previous:req,watchResult:result}),/changed original candidates/);
+  assert.throws(()=>assessScreeningContinuity({previous:req,watchResult:result}),/screeningInputLedger disagrees with native source-receipt admission/);
 });
 test('duplicate conflicting observations of the same source item fail closed',()=>{
   const req=previous();const a=revision(req.ledger,{title:'A changed title'});
@@ -128,7 +128,7 @@ test('a revision cannot launder an unknown source item or unknown search receipt
 test('a fabricated new candidate receipt list is refused',()=>{
   const req=previous(),result=watch(req.ledger);
   result.changes.newCandidateReceipts.push({fake:true});
-  assert.throws(()=>assessScreeningContinuity({previous:req,watchResult:result}),/candidate receipts disagree/);
+  assert.throws(()=>assessScreeningContinuity({previous:req,watchResult:result}),/previous screening is not the original source-qualified watch prefix/);
 });
 
 test('standalone operation emits JSON and signals reassessment as exit 1, not automatic clearance',async()=>{
