@@ -338,6 +338,48 @@ Unchanged standard BM25 is prior art, not a new theorem. A production
 research agent must validate independent source identity, permitted
 metadata use, reviewer authority, and early stopping separately.
 
+### Exact conditional early-stopping bound (mathematical instrument)
+
+Retrospective WSS@95 is an **oracle** metric: it relies on already knowing
+how many relevant records exist in the corpus. A live research agent may
+not stop merely because a ranker's top documents look relevant.
+
+`boundFiniteScreeningRecall({included,excluded,unresolved,
+targetNumerator:95,targetDenominator:100})`, exported through the
+original `./screening-core` entrypoint and `bibliography recall-bound`,
+computes an **exact conditional finite-source recall lower bound**.
+If p positively adjudicated identities and u unresolved/unread/contested
+identities remain in a *closed and correct* census, the total relevant
+count could be p+u. Therefore recalled proportion is **at least**
+`p/(p+u)`; this is sharp when every unresolved item really is positive.
+The target comparison is done with integer BigInt arithmetic rather than
+trusting floating-point equality at 95/100. Source-identity conflicts
+are counted as unresolved, never both positive and negative.
+
+```sh
+echo '{"included":26,"excluded":40,"unresolved":261}' | bibliography recall-bound
+```
+
+The preregistered urinary-incontinence title/abstract pilot found 26
+positives among 66 documents (top 20%) with 261 not yet read. The exact
+worst-case lower bound is **26/287 ≈ 9.06% recall**, far below 95%,
+even though the *retrospective* final positive count showed 33.3%
+of positive documents in that early slice. In the absence of an accepted
+bound on remaining positives, early score enrichment cannot establish
+safe stopping. This is ordinary finite counting, **not** a newly invented
+general mathematical theorem or an independently authenticated human
+screening system.
+
+The output **always** reports `operativeStopAuthorized:false`: the caller
+has not established a complete original source frame, valid review
+permissions, independent reviewer/adjudicator identities, or an authorized
+operational stop policy merely by supplying three integers. A mathematical
+threshold may hold conditionally while the real service must still refuse
+an automated stop. Tests exhaustively enumerate every possible labeling
+of up to six unresolved records, show the lower bound is sharp, and
+refuse malformed or identity-collapsing counts. See
+`test/finite-recall-bound.test.mjs`.
+
 ### Registers and source records
 
 - `src/register.mjs` — `searchRegister(register, variables)`. A register is
