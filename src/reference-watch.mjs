@@ -144,6 +144,14 @@ export async function runWatch(spec, {ledger,now,fetchImpl=fetch,email,mailto,
     if(index<spec.queries.length-1 && delayBetweenQueriesMs>0)
       await new Promise(accept=>setTimeout(accept,delayBetweenQueriesMs));
   }
+  // A historical ledger may contain candidates whose source search receipts
+  // were lost. Retain those in custody but NEVER inject fabricated searches or
+  // admit them into review screening as independently witnessed acquisitions.
+  const admittedSearches=new Map(searches.map(row=>[row.id,row]));
+  const screeningReadyCandidates=candidates.filter(c=>admittedSearches.get(c.searchId)?.source===c.source);
+  const unlinkedPriorCandidates=ledger.candidates.filter(c=>admittedSearches.get(c.searchId)?.source!==c.source)
+    .map(c=>({source:c.source,itemId:c.item.id,searchId:c.searchId,
+      reason:"missing-or-contradictory-original-retrieval-receipt"}));
   const completed=searches.length-ledger.searches.length;
   const partial=searches.slice(ledger.searches.length).some(s=>s.coverage!=="recorded-page-complete");
   return {
@@ -151,11 +159,14 @@ export async function runWatch(spec, {ledger,now,fetchImpl=fetch,email,mailto,
       interval:window,observedAt:now,execution:"single-invocation-no-scheduler"},
     disposition:refused.length ? "partial-or-refused" : partial ? "partial-source-coverage":"recorded-pages-received",
     ledger:{...ledger,searches,candidates},
+    screeningInputLedger:{searches,candidates:screeningReadyCandidates},
+    unlinkedPriorCandidates,
     changes:{newCandidateReceipts,newWorkIdentityCount:candidateWorkIds.size,
       newWorkIdentityKeys:[...candidateWorkIds].sort(),reseens:[...observedKnownStudies].sort(),
       candidateSourceRevisions:sourceRevisions},
     refusals:refused,
     summary:{attempted:spec.queries.length,received:completed,refused:refused.length,
+      priorUnlinkedCandidateReceipts:unlinkedPriorCandidates.length,screeningReadyCandidateReceipts:screeningReadyCandidates.length,
       newlyRecordedCandidateReceipts:newCandidateReceipts.length,
       newUnscreenedWorkIdentityCandidates:candidateWorkIds.size},
     limits:"Fetched source metadata only; single capped first page per query, no pagination/full-text/retraction detection, authentication, source rights, independent origin identity, screening decisions, scheduling or merchant settlement. New candidates remain unscreened.",
