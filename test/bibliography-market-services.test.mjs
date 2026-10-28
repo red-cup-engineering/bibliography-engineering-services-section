@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import { bookRecord } from "../src/book-record.mjs";
-import { referenceCheck } from "../src/reference-check.mjs";
+import { referenceCheck, reliableBibliographyFetch } from "../src/reference-check.mjs";
 
 const response = (body, status = 200, headers = {}) => ({ ok: status >= 200 && status < 300, status, headers: { get: (name) => headers[name.toLowerCase()] ?? null }, json: async () => body });
 const networkError = (code) => Object.assign(new TypeError("fetch failed"), { cause: { code } });
@@ -189,4 +189,22 @@ test("referenceCheck title search reads both when CrossRef and OpenAlex credit t
   const result = (await referenceCheck({ references: [given] }, { fetchImpl })).results[0];
   assert.equal(result.read, "both");
   assert.deepEqual(result.sources.map(({ source, status }) => ({ source, status })), [{ source: "CrossRef", status: "matched" }]);
+});
+
+test("the common citation-fetch deadline is observable even if a source adapter ignores abort", async () => {
+  let calls=0;
+  const fake=async () => {calls+=1;return new Promise(()=>{});};
+  const guarded=reliableBibliographyFetch(fake,{timeoutMs:5,budgetMs:100});
+  await assert.rejects(guarded("https://api.crossref.org/works/10.1/example"), error =>
+    error?.unreachable === true && error?.code === "ETIMEDOUT");
+  assert.equal(calls,2);
+});
+test("explicit caller abort refuses a stalled bibliography acquisition without leaking a timer", async () => {
+  const stop=new AbortController();
+  const fake=async () => new Promise(()=>{});
+  const guarded=reliableBibliographyFetch(fake,{timeoutMs:250,budgetMs:500});
+  const operation=guarded("https://api.crossref.org/works/10.1/example",{signal:stop.signal});
+  stop.abort(new DOMException("caller stopped","AbortError"));
+  await assert.rejects(operation, error =>
+    error?.unreachable === true && error?.code === "ETIMEDOUT");
 });
