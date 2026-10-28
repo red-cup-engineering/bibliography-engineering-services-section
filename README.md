@@ -471,3 +471,51 @@ required fields (type, key, reference-type, authors, year, title) but is
 number, pages, ...): the specification states what a depth-2 carrier's
 frontmatter carries without ruling it a closed vocabulary, and the
 existing math-section corpus legitimately uses such fields.
+
+### Source-change propagation into screened evidence
+
+The existing one-shot OpenAlex/PubMed `watch-literature` can report changed source
+metadata without replacing the original search/candidate receipts. Merely
+re-running a title/abstract screening on that immutable ledger would preserve
+old `included`/`excluded` decisions as if the later source observation did not
+exist. The source-owned `screen-continuity` operation now closes **that precise
+dependency gap** without a new provenance registry.
+
+It accepts `{ "previous": { "ledger": ..., "protocol": ...,
+"reviews": [...], "adjudications": [...] }, "watchResult": ... }`, where
+`watchResult` is the original `runWatch` result. It executes the original
+screening reducer on the previous and subsequent evidence snapshots and reports
+(1) changed source item and original review-quote dependencies, (2) changes to
+DOI-based record status when another original source receipt joins the record,
+(3) genuinely new, still-unreviewed identities, and (4) source retrieval
+refusals. A source-content change requires reassessment even when the original
+quote still occurs at the original offset; changed nearby context may matter.
+
+A revision notice must match original unchanged source bytes and a newly
+recorded source search. Previously recorded ledger entries must be append-only;
+revision assertions lacking an original source, fabricated new receipts,
+contradictory versions and silent previous-row replacement fail closed.
+`reassessmentRecordIds` and `previouslyResolvedNowReassessmentRequired` are
+machine-actionable investigation inputs for the **existing** Science and
+Coesite Work owners; this operation makes no automatic vote changes or Work
+writes. A retraction/authoritative publisher correction is **not established**
+by OpenAlex/PubMed metadata changes alone. Neither a numeric report nor exit
+code 0 certifies a complete corpus, reviewer identity, source authenticity,
+publication, or permission to stop screening.
+
+```sh
+# Generate watch-result.json separately from a recorded prior ledger:
+node scripts/watch-literature.mjs < watch-request.json > watch-result.json
+# Compose {previous: <old screening request>, watchResult: <that watch result>}.
+node scripts/review-screening-continuity.mjs < continuity-request.json > impact.json
+# Or use the original bibliography CLI with installed package dependencies:
+bibliography screen-continuity < continuity-request.json
+node --test test/screening-continuity.test.mjs
+```
+
+The standalone script exits 1 when a previous decision needs review, a new
+unreviewed identity is seen, or a source query was refused; 2 for malformed
+input. Only absence of *these observed changes* yields exit 0, never scientific
+clearance. This is a replayable computational result over supplied source
+observations; independent re-acquisition, licensure, scientific interpretation,
+operational execution and market settlement remain distinct.
