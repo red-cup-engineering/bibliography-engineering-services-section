@@ -32,7 +32,7 @@ function frequencies(tokens){
   for(const t of tokens)out.set(t,(out.get(t)??0)+1);
   return out;
 }
-function admitCohenCorpus(rawText, profile) {
+export function admitCohenCorpus(rawText, profile) {
   if(typeof rawText!=="string"||!Buffer.byteLength(rawText,"utf8")||
     Buffer.byteLength(rawText,"utf8")>MAX_BYTES||!profile||
     !EXACT_GIT.test(profile.gitBlobSha1??"")||
@@ -72,7 +72,7 @@ function admitCohenCorpus(rawText, profile) {
     refuse("original source final-inclusion total differs from the preregistered value");
   return {source,docs};
 }
-function rankWithBm25(docs,query){
+export function rankWithBm25(docs,query){
   const qTerms=[...new Set(tokenize(query))];
   if(!qTerms.length)refuse("non-empty label-blind research question required");
   const n=docs.length,mean=docs.reduce((s,d)=>s+d.length,0)/n||1;
@@ -96,7 +96,7 @@ function xorshift32(seed){
     return (x>>>0)/4294967296;
   };
 }
-function randomRanks(docs,seed){
+export function randomRanks(docs,seed){
   const indices=docs.map((_,i)=>i);
   indices.sort((a,b)=>docs[a].pmid.localeCompare(docs[b].pmid));
   const next=xorshift32(seed||1);
