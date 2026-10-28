@@ -10,6 +10,25 @@ import { decodeCsvRows } from "@red-cup-engineering/csv-services-section/csv-cod
 import { reliableBibliographyFetch } from "../src/reference-check.mjs";
 import { assayCohenScreeningEndpoint } from "../src/screening-endpoint-pilot.mjs";
 const manifestPath=new URL("../research/source-pins/cohen-2006-text-screening-pilot-preregistration.json",import.meta.url);
+
+/** Reuse one original, bounded immutable-source acquisition policy across
+    ranking research and stopping simulations. No second HTTP client. */
+export async function fetchPinnedCohenTask({task,sourceCommit,fetchImpl=fetch}={}) {
+  if(!task || typeof task.key!=="string" ||
+     !["Antihistamines","Estrogens","UrinaryIncontinence"].includes(task.key) ||
+     !/^[0-9a-f]{40}$/u.test(sourceCommit??"") ||
+     task.sourceCommit!==sourceCommit ||
+     task.path!=="datasets/Cohen_2006/output/online/"+task.key+".csv")
+    throw new TypeError("unapproved original cohort path or revision");
+  const locator="https://raw.githubusercontent.com/LHofstee/systematic-review-datasets/"+sourceCommit+"/"+task.path;
+  const boundedFetch=reliableBibliographyFetch(fetchImpl,{timeoutMs:20000,budgetMs:35000});
+  const response=await boundedFetch(locator);
+  if(!response.ok)throw new TypeError("original source HTTP response not admitted: "+response.status);
+  const rawText=await response.text();
+  if(typeof rawText!=="string"||Buffer.byteLength(rawText,"utf8")>2_000_000)
+    throw new TypeError("original source response exceeded bounded research admission");
+  return {rawText,locator};
+}
 export async function reproduceCohenPilot({manifest,fetchImpl=fetch}={}){
  if(!manifest||manifest.type!=="PreRegisteredSourceQualifiedScreeningPilot"||
     !manifest.precommitted||manifest.version!==1||
@@ -21,14 +40,7 @@ export async function reproduceCohenPilot({manifest,fetchImpl=fetch}={}){
    throw new TypeError("preregistered three-corpus original Cohen pilot manifest required");
  const outcomes=[],seenIds=new Map(),overlaps=[];
  for(const task of manifest.tasks){
-   if(task.sourceCommit!==manifest.upstreamCommit||
-      task.path!=="datasets/Cohen_2006/output/online/"+task.key+".csv")
-     throw new TypeError("unapproved original cohort path or revision");
-   const url="https://raw.githubusercontent.com/LHofstee/systematic-review-datasets/"+manifest.upstreamCommit+"/"+task.path;
-   const boundedFetch=reliableBibliographyFetch(fetchImpl,{timeoutMs:20000,budgetMs:35000});
-   const response=await boundedFetch(url);
-   if(!response.ok)throw new TypeError("original source HTTP response not admitted: "+response.status);
-   const rawText=await response.text();
+   const {rawText,locator:url}=await fetchPinnedCohenTask({task,sourceCommit:manifest.upstreamCommit,fetchImpl});
    const result=assayCohenScreeningEndpoint({rawText,profile:task,
      randomReplicates:manifest.metric?.randomSeeds});
    // Only identifier membership (not source text or labels) is checked for
