@@ -223,3 +223,53 @@ export function assessRecordedScreening({ledger,protocol,reviews=[],adjudication
     externalEffects:[],
   };
 }
+
+/**
+ * Finite WORST-CASE recall bound, assuming exactly the identified source frame.
+ *
+ * Included = positively adjudicated, excluded = negatively adjudicated,
+ * unresolved = not judged OR discordant source/reviewer identity. A disputed
+ * source cannot be counted as both included and excluded or as a new work.
+ *
+ * If p included and u unresolved identities remain, the true number of
+ * included works in the closed frame can be as large as p+u, so observed
+ * recall is >= p/(p+u). This is sharp: let every unresolved work be positive.
+ * All-excluded is the opposite completion, with recall 1 when p>0.
+ *
+ * This is an elementary exact integer inequality, NOT a learned confidence
+ * score, independent evidence of frame completeness, or authority to stop.
+ * An incomplete acquisition frame can hide arbitrary extra works outside it.
+ */
+export function boundFiniteScreeningRecall({included,excluded,unresolved,
+  targetNumerator=95,targetDenominator=100}={}) {
+  const counts=[included,excluded,unresolved];
+  if(counts.some(x=>!Number.isSafeInteger(x)||x<0||x>1000000)||
+     counts.reduce((s,x)=>s+x,0)===0||
+     !Number.isSafeInteger(targetNumerator)||!Number.isSafeInteger(targetDenominator)||
+     targetNumerator<1||targetNumerator>targetDenominator||
+     targetDenominator>10000)
+    throw new TypeError("screening recall requires bounded disjoint observed/unresolved counts and a rational target");
+  const size=included+excluded+unresolved;
+  const totalMax=included+unresolved;
+  const defined=totalMax>0;
+  // Exact comparison, avoids an IEEE-754 false threshold at e.g. 95/100.
+  const meets=defined&&included>0&&
+    BigInt(included)*BigInt(targetDenominator)>=
+    BigInt(totalMax)*BigInt(targetNumerator);
+  const optimistic= included>0 ? 1 : 0;
+  const pessimistic=defined ? included/totalMax : null;
+  return Object.freeze({
+    type:"FiniteScreeningRecallLowerBound",
+    frameSize:size,confirmedIncluded:included,confirmedExcluded:excluded,
+    unresolvedWorkIdentities:unresolved,
+    target:{numerator:targetNumerator,denominator:targetDenominator},
+    compatibleIncludedTotals:{minimum:included,maximum:totalMax},
+    sharpWorstCaseRecall:defined?{numerator:included,denominator:totalMax,value:pessimistic}:null,
+    optimisticRecall:defined?optimistic:null,
+    mathematicallyAtLeastTargetWithinAssumedClosedFrame:meets,
+    countermodel:"All unresolved works count as relevant; no unobserved external works are assumed.",
+    epistemicStanding:defined?"exact finite-frame arithmetic conditional on complete identity census and authenticated independent decisions":"recall undefined when no positive can exist",
+    operativeStopAuthorized:false,
+    withheldAuthority:["independent complete source frame","actual reviewer/adjudication identity","source rights and scientific validity","externally approved screening protocol and stopping law"],
+  });
+}
