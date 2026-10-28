@@ -1,0 +1,80 @@
+name: Reproduce source-pinned real text-screening pilot
+on:
+  pull_request:
+    paths:
+      - 'src/screening-endpoint-pilot.mjs'
+      - 'scripts/reproduce-cohen-screening-pilot.mjs'
+      - 'research/source-pins/cohen-2006-text-screening-pilot-preregistration.json'
+      - 'test/screening-endpoint-pilot*.test.mjs'
+      - 'package.json'
+      - 'README.md'
+      - '.github/workflows/screening-endpoint-pilot.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'src/screening-endpoint-pilot.mjs'
+      - 'scripts/reproduce-cohen-screening-pilot.mjs'
+      - 'research/source-pins/cohen-2006-text-screening-pilot-preregistration.json'
+      - 'test/screening-endpoint-pilot*.test.mjs'
+      - 'package.json'
+      - 'README.md'
+      - '.github/workflows/screening-endpoint-pilot.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  full-native-and-real-source-pilot:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install original upstream CSV and bibliography packages
+        run: npm install --ignore-scripts --no-audit --no-fund
+      - name: Execute source, negative and entire native bibliography regression suite
+        run: |
+          npm run check
+          npm test
+      - name: Fetch three genuinely labeled source editions under preregistration and score two endpoints
+        run: |
+          node scripts/reproduce-cohen-screening-pilot.mjs > screening-endpoint-pilot.json
+      - name: Assert pinned data integrity, no oracle leakage and bounded outputs
+        run: |
+          node --input-type=module -e '
+            import {readFileSync} from "node:fs";
+            const r=JSON.parse(readFileSync("screening-endpoint-pilot.json","utf8"));
+            const ids=["Antihistamines","Estrogens","UrinaryIncontinence"];
+            const n=[310,368,327],fin=[16,80,40],initial=[92,80,78];
+            const revision="ee5f9a88cbf7945c2d6d679385f8605f28b298e9";
+            if(r.sourceCommit!==revision||r.comparisons.length!==3)throw Error("Source or corpus count changed");
+            for(let i=0;i<ids.length;i++){
+              const s=r.comparisons[i];
+              if(s.task!==ids[i]||s.evidence.records!==n[i]||
+                  s.evidence.stage.finalPositive!==fin[i]||
+                  s.evidence.stage.initialPositive!==initial[i]||
+                  s.method.usesGoldLabelsToRank!==false||
+                  s.endpoints.finalInclusion.random.nPermutations!==128)throw Error("Unadmitted source/label count: "+ids[i]);
+              for(const [name,obj] of Object.entries(s.endpoints)){
+                const p=obj.rank,rr=obj.random;
+                if(!(p.workSavedOverSamplingAt95>=-0.05&&p.workSavedOverSamplingAt95<=0.95)||
+                  !Number.isFinite(p.averagePrecision)||
+                  !(p.inspectedAt95Recall>0&&p.inspectedAt95Recall<=n[i])||
+                  !Number.isFinite(rr.workSavedOverSamplingAt95.mean))throw Error("Invalid ranking metrics "+name);
+              }
+              console.log(s.task,JSON.stringify({
+                rows:s.evidence.records,labels:s.evidence.stage,
+                missingTitle:s.evidence.missingTitle,
+                missingAbstract:s.evidence.missingAbstract,
+                sourceSha256:s.source.sha256,
+                endpoints:s.endpoints,
+              }));
+            }
+            console.log("shared source PubMed IDs across review tasks",r.overlap.sharedPubmedRecordsAcrossTasks);
+          '
+      - uses: actions/upload-artifact@v4
+        with:
+          name: source-qualified-text-screening-pilot
+          path: screening-endpoint-pilot.json
+          retention-days: 90
