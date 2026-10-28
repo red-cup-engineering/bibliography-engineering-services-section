@@ -94,7 +94,7 @@ switch (command) {
   case "recall-bound": result = boundFiniteScreeningRecall(input()); break;
   case "benchmark-audit": result = auditLabeledIdentifierCarrier(input()); break;
   case "screen-continuity": result = assessScreeningContinuity(input()); break;
-  case "watch-literature": { const request=input(); result=await runWatch(request.spec,{ledger:request.ledger,now:request.now,mailto:request.mailto,email:request.email,delayBetweenQueriesMs:1200});break;}
+  case "watch-literature": { const request=input(); result=await runWatch(request.spec,{ledger:request.ledger,now:request.now,mailto:request.mailto,email:request.email,delayBetweenQueriesMs:1200,previousScreening:request.previousScreening});break;}
   case "search-register": {
     const variables = Object.fromEntries(process.argv.slice(4).map((arg) => [arg.slice(0, arg.indexOf("=")), arg.slice(arg.indexOf("=") + 1)]));
     result = await searchRegister(JSON.parse(readFileSync(process.argv[3], "utf8")), variables);
