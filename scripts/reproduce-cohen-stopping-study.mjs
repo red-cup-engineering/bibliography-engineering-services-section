@@ -28,7 +28,8 @@ export async function reproduceCohenStoppingStudy(
   if(original.type!=="PreRegisteredSourceQualifiedScreeningPilot"||
     !original.precommitted||
     original.upstreamCommit!==protocol.originalSourceCommit||
-    JSON.stringify(original.tasks)!==JSON.stringify(protocol.tasks))
+    JSON.stringify(original.tasks.map(t=>[t.key,t.sourceCommit,t.path,t.gitBlobSha1,t.reportedRows,t.reportedFinalIncluded,t.query]))!==
+    JSON.stringify(protocol.tasks.map(t=>[t.key,t.sourceCommit,t.path,t.gitBlobSha1,t.reportedRows,t.reportedFinalIncluded,t.query])))
     throw new TypeError("stopping study mismatches the original preregistered ranking inputs");
   const comparisons=[];
   for(const task of protocol.tasks) {
