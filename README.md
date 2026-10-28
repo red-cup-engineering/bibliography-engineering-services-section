@@ -268,6 +268,76 @@ A **raw label conflict** means both 0 and 1 appear among source rows for one Ope
 
 **Next independent scientific requirement:** acquire and rights-qualify the actual text-rich finalized dataset editions, original adjudication rules and benchmark study protocols; preregister train/test splits and held-out model/baseline comparison; then measure WSS@95, missed studies, reviewer interventions, time and cost. [Original Lenticule Library Science issue #1](https://github.com/lenticule-science/library-science-services-section/issues/1) owns that external performance experiment. An actual benchmark comparison or economic claim of beating ASReview remains **unverified**.
 
+### Pinned two-endpoint screening efficiency pilot (implemented)
+
+The same externally sourced bibliographic question may have TWO valid but
+different screening targets: title/abstract eligibility and final systematic
+review inclusion after later screening. Work-saved scores are not meaningful
+without naming the target and the reference population.
+
+Original [Cohen et al. 2006, DOI 10.1197/jamia.M1929](https://doi.org/10.1197/jamia.M1929)
+drug-review source data, as processed by the public LHofstee systematic
+review dataset repository, provide three text-bearing labeled topics.
+The precommitted immutable Git revision, original SHA-1 blobs, topical query
+terms, label endpoints and randomization strategy are in
+`research/source-pins/cohen-2006-text-screening-pilot-preregistration.json`.
+That protocol was committed before running any ranking evaluation, at
+`2b86d82830e8cb19f7a8b57d5778cd73d33661ba`.
+
+Original `src/screening-endpoint-pilot.mjs` checks exact original Git blob
+source bytes, distinct PubMed IDs, two independently named binary label
+columns, sample size, and the ordinary Group RFC4180 CSV decoder.
+Missing titles and abstracts stay in the denominator. A frozen label-blind
+BM25 score uses the declared topic query with title doubled, k1=1.2, b=.75;
+128 deterministic xorshift/Fisher-Yates random permutations are the
+comparator. The output records retrospective 95%-recall workload, WSS@95,
+recall at 20% of records screened, average precision and source digests.
+Gold labels are read only at the retrospective scorer, never used to train
+or tune the ranks. This is NOT an ASReview machine-learning model.
+
+| Task | Title/abstract positives → final included | WSS@95 on title/abstract | WSS@95 on final included | Final-label random mean WSS@95 |
+| --- | ---: | ---: | ---: | ---: |
+| Antihistamines (310) | 92 → 16 | +0.0855 | +0.1274 | −0.0023 |
+| Estrogens (368) | 80 → 80 | +0.1185 | +0.1185 | +0.0094 |
+| Urinary incontinence (327) | 78 → 40 | **−0.0286** | +0.1090 | +0.0196 |
+
+**New source-specific result:** Across these three tasks, the frozen topical
+ranker has positive retrospective WSS@95 against final inclusion labels.
+Against title/abstract labels it fails on urinary incontinence:
+the ranker finds 33.3% of title/abstract positives in the top 20% of
+the file, but requires 320/327 records for 95% recall. Thus initial
+enrichment is NOT a warranted safe stopping rule. In these three corpora
+114 of 250 initial title/abstract positives were not final inclusions.
+The source files contain no overlapping PubMed IDs across the three topics.
+
+**Reproduce using the public source and Node 22+ (no raw full texts
+or datasets checked into this repository):**
+
+```sh
+npm install --ignore-scripts --no-audit --no-fund
+node --test test/screening-endpoint-*.test.mjs
+node scripts/reproduce-cohen-screening-pilot.mjs > screening-endpoint-pilot.json
+```
+
+Actual original-source GitHub Actions audit:
+https://github.com/red-cup-engineering/bibliography-engineering-services-section/actions/runs/40630137248
+(success: complete source/tests, genuine original raw data acquisition,
+source digest checks, two endpoints and machine-readable artifact).
+
+**Critical limits.** The underlying original Cohen index reports
+`custom open license`; this package publishes AGGREGATES, SOURCE HASHES
+and algorithm only, never the source abstracts. Separate source permissions
+must be independently qualified before commercial redistribution.
+All three tasks are derived from one parent Cohen review source family;
+no cross-discipline inference, external customer or vendor accuracy
+comparison is established. The random baseline has 128 fixed repetitions,
+not a formal population confidence interval. WSS@95 uses the known
+positive total retrospectively, not an implementable unseen-total stopping
+criterion; absent a real evidence-backed stop rule, screening must continue.
+Unchanged standard BM25 is prior art, not a new theorem. A production
+research agent must validate independent source identity, permitted
+metadata use, reviewer authority, and early stopping separately.
+
 ### Registers and source records
 
 - `src/register.mjs` — `searchRegister(register, variables)`. A register is
