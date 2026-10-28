@@ -1,0 +1,73 @@
+# One-time, explicit-source cleanup. Every candidate was compared against main
+# and shown to have zero commits ahead. Archive exact heads before deletion.
+name: Retire source-verified integrated branches
+on:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/retire-integrated-branches-20261028.yml']
+permissions:
+  contents: write
+jobs:
+  retire:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Reconfirm safe ancestry, source PRs, tag and retire
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          branches=(
+            'feat/migrate-reference-records-and-csl-projection'
+            'feat/replayable-literature-discovery-watch-20261027'
+            'feat/source-witnessed-dual-screening-20261027'
+            'fix/conditional-safe-screening-stop-20261027'
+            'research/independent-synergy-id-label-conflict-assay-20261027'
+            'research/source-qualified-screening-endpoint-benchmark-20261027'
+          )
+          open_prs="$(gh api "repos/$REPO/pulls?state=open&per_page=100")"
+          for branch in "${branches[@]}"; do
+            echo "::group::Review $branch"
+            if [[ "$branch" == "main" || "$branch" == release/* || "$branch" == automation-state ]]; then
+              echo "::error::Protected branch class must not be retired"
+              exit 1
+            fi
+            count="$(jq -r --arg b "$branch" '[.[] | select(.head.ref == $b)] | length' <<< "$open_prs")"
+            if [[ "$count" != 0 ]]; then
+              echo "::error::Branch remains a PR head: $branch"
+              exit 1
+            fi
+            branch_data="$(gh api "repos/$REPO/branches/$branch")"
+            tip="$(jq -r '.commit.sha' <<< "$branch_data")"
+            protection="$(jq -r '.protected' <<< "$branch_data")"
+            if [[ "$protection" != false || ! "$tip" =~ ^[a-f0-9]{40}$ ]]; then
+              echo "::error::Protected or invalid branch source"
+              exit 1
+            fi
+            ancestry="$(gh api "repos/$REPO/compare/main...$branch")"
+            ahead="$(jq -r '.ahead_by' <<< "$ancestry")"
+            status="$(jq -r '.status' <<< "$ancestry")"
+            if [[ "$ahead" != 0 || ( "$status" != behind && "$status" != identical ) ]]; then
+              echo "::error::Branch has source not contained in main; retained"
+              exit 1
+            fi
+            archive="refs/tags/archive/2026-10-28/$branch"
+            if gh api "repos/$REPO/git/ref/tags/archive/2026-10-28/$branch" > /tmp/existing-archive.json 2>/dev/null; then
+              old="$(jq -r '.object.sha' /tmp/existing-archive.json)"
+              if [[ "$old" != "$tip" ]]; then
+                echo "::error::Archive tag already exists with another SHA"
+                exit 1
+              fi
+            else
+              gh api --method POST "repos/$REPO/git/refs" -f ref="$archive" -f sha="$tip" >/dev/null
+            fi
+            # The exact original head is now safely reachable as a Git tag.
+            # Re-read immediately before deleting; refuse if another writer moved it.
+            latest="$(gh api "repos/$REPO/git/ref/heads/$branch" --jq '.object.sha')"
+            [[ "$latest" == "$tip" ]] || { echo "::error::Concurrent branch writer; retained"; exit 1; }
+            gh api --method DELETE "repos/$REPO/git/refs/heads/$branch" >/dev/null
+            echo "RETIRED $branch exact_head=$tip archive=$archive"
+            echo "::endgroup::"
+          done
