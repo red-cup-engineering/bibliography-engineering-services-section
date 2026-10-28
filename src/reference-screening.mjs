@@ -195,7 +195,7 @@ export function assessRecordedScreening({ledger,protocol,reviews=[],adjudication
     type:"SourceWitnessedReviewAssay",version:1,protocol:{id:protocol.id,stage:protocol.stage,criteria:[...protocol.criteria]},
     searches:ledger.searches.map(x=>({id:x.id,source:x.source,query:x.query,date:x.date??null,resultCount:x.resultCount})),
     records:screened,possibleDuplicateGroups,exclusionReasons,
-    flow:{...searchCoverage,confirmedDoiDuplicateReceipts,screeningRecords:screened.length,...statusCounts,
+    flow:{...searchCoverage,confirmedDoiDuplicateReceipts:confirmedDuplicateReceipts,screeningRecords:screened.length,...statusCounts,
       unverifiedTitleOnlyRecords:screened.filter(x=>x.identityUnverified).length},
     releaseQualification:{
       reviewRecordsAllResolved:screened.every(x=>["included","excluded"].includes(x.status)),
