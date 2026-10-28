@@ -17,12 +17,13 @@ import { fetchOpenAlexWork } from "../scripts/fetch-openalex-work.mjs";
 import { searchPubmed } from "../scripts/search-pubmed.mjs";
 import { fetchPubmedSummaries } from "../scripts/fetch-pubmed-summaries.mjs";
 import { searchRegister } from "../src/register.mjs";
+import { assessCslRecordedScreening } from "../src/reference-screening-csl.mjs";
 import { admitSourceRecord, checkNote, uncitedRows, readSourceRecord, recordRead, recordSearch, writeNoteReferences } from "../src/source-record.mjs";
 
 /** @returns {string} the usage block, one verb per line, each stating what it reads on stdin */
 function usage() {
   return [
-    "usage: bibliography <render|read|recognize|admit|write|collect|project|parse|import-csl|project-csl|resolve-doi|search-openalex|fetch-openalex|search-pubmed|fetch-pubmed-summaries|search-register|record-search|record-read|record-check|record-references> [path]",
+    "usage: bibliography <render|read|recognize|admit|write|collect|project|parse|import-csl|project-csl|resolve-doi|search-openalex|fetch-openalex|search-pubmed|fetch-pubmed-summaries|search-register|record-search|record-read|record-check|record-references|screen-review> [path]",
     "",
     "  render         renders a bibliography record to Markdown; reads a bibliography record JSON object on stdin",
     "  read           reads one admitted bibliography by path, given as argv[3]; reads nothing on stdin",
@@ -46,6 +47,8 @@ function usage() {
     "  record-read              reads the first work a register (argv[4]) finds for the variables (argv[5] on) into a new row of the source record (argv[3]), with the record schema's x-row-defaults; prints the row and abstract",
     "  record-check             checks a source record (argv[3]) against its $schema and every note it grounds against it; exits 1 on any error",
     "  record-references        derives each note's references: from the source record (argv[3]); --write writes them, otherwise prints them",
+    "",
+    "  screen-review            validate CSL identity and dual-review evidence; read {ledger,protocol,reviews,adjudications} JSON on stdin",
     "",
     "  -h, --help     print this usage block and exit 0",
   ].join("\n");
@@ -79,6 +82,7 @@ switch (command) {
     result = await fetchPubmedSummaries(rest.filter((arg) => !arg.includes("@")), { email: rest.find((arg) => arg.includes("@")) });
     break;
   }
+  case "screen-review": result = assessCslRecordedScreening(input()); break;
   case "search-register": {
     const variables = Object.fromEntries(process.argv.slice(4).map((arg) => [arg.slice(0, arg.indexOf("=")), arg.slice(arg.indexOf("=") + 1)]));
     result = await searchRegister(JSON.parse(readFileSync(process.argv[3], "utf8")), variables);
