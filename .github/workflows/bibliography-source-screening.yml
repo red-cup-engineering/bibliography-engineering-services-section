@@ -1,0 +1,52 @@
+name: bibliography-source-screening
+on:
+  pull_request:
+    paths:
+      - 'src/reference-screening*.mjs'
+      - 'test/reference-screening*.test.mjs'
+      - 'scripts/screen-candidates.mjs'
+      - 'apps/bibliography-cli.mjs'
+      - 'package.json'
+      - '.github/workflows/bibliography-source-screening.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'src/reference-screening*.mjs'
+      - 'test/reference-screening*.test.mjs'
+      - 'scripts/screen-candidates.mjs'
+      - 'apps/bibliography-cli.mjs'
+      - 'package.json'
+      - '.github/workflows/bibliography-source-screening.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  pure-source-screening:
+    runs-on: ubuntu-latest
+    timeout-minutes: 6
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Exercise real screening reducer and negative controls without private packages
+        run: |
+          node --check src/reference-screening.mjs
+          node --check scripts/screen-candidates.mjs
+          node --test test/reference-screening.test.mjs test/screen-candidates-cli.test.mjs
+  original-package-integration:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install original bibliography dependencies
+        run: npm install --ignore-scripts --no-audit --no-fund
+      - name: Check full source and canonical CSL normalization
+        run: |
+          npm run check
+          node --test test/reference-screening-csl.test.mjs
+      - name: Execute original complete bibliography package suite
+        run: npm test

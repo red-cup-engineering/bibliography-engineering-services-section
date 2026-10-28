@@ -114,48 +114,105 @@ projections of an OpenAlex work, a PubMed summary, and a CrossRef work are
 a data format's business and live in
 `@red-cup-engineering/csl-json-services-section`.
 
-### Systematic-review screening and journal watches
+### Source-witnessed dual-review screening (implemented)
 
-- `src/reference-screening.mjs` — the screening algebra:
-  `makeSearchRecord` (one row of the search-audit trail),
-  `dedupeKeyForItem`/`makeCandidateRecord` (a CSL-JSON item tagged with its
-  dedupe key — `doi:<bare DOI>` when it carries a DOI, case-insensitively,
-  else `title:<folded title>`; the fold is the house CSL-JSON
-  `normalizeTitle`, the same one reconciliation and CrossRef verification
-  compare titles with, so a near-miss title folds to a different key and is
-  deliberately left unmerged), `dedupeCandidates`, `applyScreening`
-  (defaulting unmatched candidates to `"pending"`), `prismaCounts` (the
-  identified/deduplicated/screened/excluded-by-criterion/included tally a
-  PRISMA flow diagram needs), and `includedCslItems`. Pure; no I/O.
-- `scripts/screen-candidates.mjs` — reads a screening ledger and a decisions
-  file from disk, dedupes and applies the decisions, writes the ledger back
-  with its `screened` field populated, and prints the `prismaCounts`.
-- `scripts/project-screened-candidates-csl.mjs` — a screened ledger's
-  included candidates as one CSL-JSON array, the screening-ledger
-  counterpart of `project-references-csl.mjs`.
-- `src/reference-watch.mjs` — `dateWindow` (a rolling `YYYY-MM-DD` window
-  ending "now") and `runWatch(spec, {ledger, now, fetchImpl})`, which runs
-  every query in a `WatchSpec` against PubMed or OpenAlex over that window
-  and appends a `CandidateRecord` only for results whose dedupe key the
-  ledger does not already carry. A watch is an ordinary search with a date
-  filter and a memory, so it composes the retrieval scripts above (with
-  `from`/`to` and `filter`) rather than carrying a second client.
-- `scripts/watch-literature.mjs` — reads a `WatchSpec` and a ledger from
-  disk, runs the watch live, writes the ledger back, prints the
-  new-candidate count. Queries run sequentially, throttled 1200ms apart by
-  default: PubMed's anonymous E-utilities nominally allow 3 requests/second,
-  but live testing (2026-09-02) still drew HTTP 429s at sub-second spacing.
-- `content/config/watches/` — one `WatchSpec` per named watch, as data.
-  `infection-associated-chronic-illness.json` covers long COVID, ME/CFS,
-  post-exertional malaise, post-infective fatigue, and post-infection
-  dysautonomia across both sources.
+The package now offers a bounded **title/abstract bibliographic screening audit**,
+not a general AI reviewer, a systematic-review completion certificate, or a
+source-authenticating agent. It receives the pre-existing original
+screening-ledger.json search/candidate form with recorded search IDs,
+queries, source names and result counts.
 
-A screening ledger is one JSON document with three fields: `searches`
-(`SearchRecord[]`), `candidates` (raw, before dedup), and `screened` (one
-deduplicated candidate per unique DOI/title, each carrying a `status` of
-`"pending"`, `"included"`, or `"excluded"` plus its named `criterion`). A
-decisions file is a flat `ScreeningDecision[]` — `{dedupeKey, decision,
-criterion}` — matched against `screened` candidates' `dedupeKey`s.
+- src/reference-screening.mjs provides dependency-free `assessRecordedScreening`.
+  It preserves every original retrieval receipt, groups exact DOI-key hits,
+  refuses to silently collapse **title-only apparent duplicates**, and keeps
+  publisher or metadata-title conflicts unresolved. It accepts at most two
+  named reviewers per candidate and an optional distinct adjudicator, with
+  each vote quoting an exact UTF-16 [start,end) span of supplied metadata.
+  It reports pending, included, excluded, conflict, and identity-conflict
+  outcomes, per-criterion exclusions, confirmed DOI duplicate counts,
+  incomplete search coverage, and unresolved candidate identities.
+- src/reference-screening-csl.mjs uses the **existing original**
+  `@red-cup-engineering/csl-json-services-section` bareDoi/normalizeTitle
+  definitions to make/verify the identity keys; it refuses forged DOI/title
+  key aliases before native screening. It does not clone CSL normalization.
+- scripts/screen-candidates.mjs accepts {ledger,protocol,reviews,adjudications}
+  JSON from stdin and emits an audit with no network/file writes. Its pure
+  source-only mode **trusts already normalized candidate dedupe keys**.
+  `--require-resolved` exits 1 on unresolved screening cases and 2 on
+  malformed inputs; the normal mode can preserve negative/unfinished work.
+- The existing `bibliography screen-review` command runs **CSL-verified**
+  screening with the original bibliography dependency closure.
+- test/reference-screening.test.mjs uses the existing cross-provider
+  screening-ledger fixture and controlled adversarial decisions. It tests
+  exact excerpt spans, reviewer conflicts, adjudication, missing full text,
+  DOI metadata conflicts, source-search bindings, title-only duplicates,
+  canonical ordering, null searches and refusal behavior.
+  test/reference-screening-csl.test.mjs checks the authentic CSL adapter.
+
+**Reconciled search counts:** the original archived fixture has 6 total
+reported hits and 6 total candidate receipts, yet one OpenAlex source
+records **3 receipts against 2 reported hits**, while one PubMed source
+records only **2 against 3**. Aggregate totals cancel the discrepancies.
+The reducer now returns perSearchReconciliation, explicit excess and
+unrecorded counts, and releaseQualification.sourceCountReconciled=false.
+That finding is a *metadata/audit consistency failure in a mixed demonstration
+fixture*, not a discovery about OpenAlex or PubMed's real indexes.
+
+**Machine contract:** schemas/bibliography/source-witnessed-review-request.schema.json
+defines the JSON Schema 2020-12 buyer/agent request and is a package export.
+It types the protocol, recorded search, citations, reviewer votes, evidence
+spans and adjudication records. Schema validation does not attest that the
+quoted excerpt actually appears in a source; the executable operation checks
+the UTF-16 offsets against the supplied original metadata. No arbitrary
+publisher-identity grant, reviewer authentication or full-text license
+comes from passing this schema. See the native schema regression tests.
+Reproduction (Node 22+, no installed private dependencies for the pure check):
+
+```sh
+node --test test/reference-screening.test.mjs
+node scripts/screen-candidates.mjs < your-review-request.json > screening-audit.json
+node scripts/screen-candidates.mjs --require-resolved < your-review-request.json
+# With package dependencies installed:
+bibliography screen-review < your-review-request.json
+```
+
+**Scientific validity and ethics.** Exact excerpts are verified only against
+the **supplied** CSL metadata, not independent fetched paper bytes; a forged
+input corpus can still contain invented passages. Distinct reviewer labels
+are not authenticated independent human/agent identities. A DOI is an
+identity identifier, not an endorsement of the methods or factual findings.
+Returned snippets may have copyright, privacy or community-rights limits;
+they are not authorized for unrestricted republication. The output
+explicitly refuses full-text screening without an authorized full-text
+evidence provider. Different title-only entries remain separate and marked
+unconfirmed until a source-authorized identity reconciliation exists.
+Counts reflect the current ledger's discovered candidate receipts, not
+systematic-search recall, true study prevalence, clinical evidence
+certainty or independently established source diversity.
+
+**External comparator, not claimed parity.** Elicit currently provides
+multi-database search, optional two-stage screening and source-linked
+extraction, including independent dual screening on some plans
+(https://support.elicit.com/en/articles/14759154-systematic-reviews-in-elicit).
+Consensus provides large-corpus hybrid search, evidence-backed synthesis and
+research agents (https://help.consensus.app/en/articles/9922673-how-consensus-works).
+Scite classifies citation *contexts* as supporting/contrasting/mentioning
+(https://scite.ai/features). This package has not demonstrated their
+retrieval coverage, extraction accuracy, quality ranking, user experience
+or performance at scale. Its independently testable advantage is explicit
+fail-closed source-span/reviewer/identity refusal and deterministic
+reproduction. A future comparison requires a preregistered held-out
+reference corpus and identical buyer tasks, not speculative feature counts.
+
+### Literature-watch state (not yet implemented)
+
+The older design claimed a src/reference-watch.mjs, scripts/watch-literature.mjs
+and named WatchSpec files. These are absent in the current repository.
+The existing OpenAlex/PubMed retrieval functions accept date filters,
+but there is no admitted multi-source watch/alert receiver or executed
+change-triggered literature-screening process here. Do not sell or
+advertise that feature until its native input corpus, acquisition
+rights, update/witness flow and tests actually exist.
 
 ### Registers and source records
 

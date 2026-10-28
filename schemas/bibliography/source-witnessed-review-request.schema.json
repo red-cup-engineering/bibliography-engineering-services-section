@@ -1,0 +1,313 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/red-cup-engineering/bibliography-engineering-services-section/blob/main/schemas/bibliography/source-witnessed-review-request.schema.json",
+  "title": "Bibliographic source-witnessed dual screening request",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "ledger",
+    "protocol"
+  ],
+  "properties": {
+    "protocol": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "stage",
+        "criteria"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256
+        },
+        "stage": {
+          "enum": [
+            "title-abstract",
+            "full-text"
+          ]
+        },
+        "criteria": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 80,
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "pattern": "^[a-z0-9][a-z0-9._:-]{0,127}$"
+          }
+        }
+      }
+    },
+    "ledger": {
+      "type": "object",
+      "required": [
+        "searches",
+        "candidates"
+      ],
+      "additionalProperties": true,
+      "properties": {
+        "searches": {
+          "type": "array",
+          "maxItems": 5000,
+          "items": {
+            "$ref": "#/$defs/search"
+          }
+        },
+        "candidates": {
+          "type": "array",
+          "maxItems": 5000,
+          "items": {
+            "$ref": "#/$defs/candidate"
+          }
+        }
+      }
+    },
+    "reviews": {
+      "type": "array",
+      "maxItems": 10000,
+      "items": {
+        "$ref": "#/$defs/review"
+      }
+    },
+    "adjudications": {
+      "type": "array",
+      "maxItems": 5000,
+      "items": {
+        "$ref": "#/$defs/adjudication"
+      }
+    }
+  },
+  "$defs": {
+    "evidence": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "searchId",
+        "itemId",
+        "field",
+        "start",
+        "end",
+        "quote"
+      ],
+      "properties": {
+        "searchId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256
+        },
+        "itemId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256
+        },
+        "field": {
+          "enum": [
+            "title",
+            "abstract"
+          ]
+        },
+        "start": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "end": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "quote": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 240
+        }
+      }
+    },
+    "review": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "recordId",
+        "reviewerId",
+        "decision",
+        "evidence"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256
+        },
+        "recordId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256
+        },
+        "reviewerId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256
+        },
+        "decision": {
+          "enum": [
+            "include",
+            "exclude",
+            "uncertain"
+          ]
+        },
+        "criterion": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "evidence": {
+          "$ref": "#/$defs/evidence"
+        }
+      }
+    },
+    "adjudication": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "recordId",
+        "reviewerId",
+        "decision",
+        "evidence",
+        "reviewIds"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256
+        },
+        "recordId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256
+        },
+        "reviewerId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256
+        },
+        "decision": {
+          "enum": [
+            "include",
+            "exclude",
+            "uncertain"
+          ]
+        },
+        "criterion": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "evidence": {
+          "$ref": "#/$defs/evidence"
+        },
+        "reviewIds": {
+          "type": "array",
+          "minItems": 2,
+          "maxItems": 2,
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 256
+          }
+        }
+      }
+    },
+    "search": {
+      "type": "object",
+      "additionalProperties": true,
+      "required": [
+        "id",
+        "source",
+        "query",
+        "resultCount"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256
+        },
+        "source": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256
+        },
+        "query": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256
+        },
+        "date": {
+          "type": "string"
+        },
+        "resultCount": {
+          "type": "integer",
+          "minimum": 0
+        }
+      }
+    },
+    "candidate": {
+      "type": "object",
+      "additionalProperties": true,
+      "required": [
+        "item",
+        "source",
+        "searchId",
+        "dedupeKey"
+      ],
+      "properties": {
+        "item": {
+          "type": "object",
+          "required": [
+            "id",
+            "title"
+          ],
+          "additionalProperties": true,
+          "properties": {
+            "id": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 256
+            },
+            "title": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 256
+            },
+            "abstract": {
+              "type": "string"
+            },
+            "DOI": {
+              "type": "string"
+            }
+          }
+        },
+        "source": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256
+        },
+        "searchId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256
+        },
+        "dedupeKey": {
+          "type": "string",
+          "minLength": 8,
+          "maxLength": 320
+        }
+      }
+    }
+  }
+}
