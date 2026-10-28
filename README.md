@@ -483,7 +483,21 @@ dependency gap** without a new provenance registry.
 
 It accepts `{ "previous": { "ledger": ..., "protocol": ...,
 "reviews": [...], "adjudications": [...] }, "watchResult": ... }`, where
-`watchResult` is the original `runWatch` result. It executes the original
+`watchResult` is the original `runWatch` result.
+
+The old screening ledger must be the source-qualified subset of the original
+watch's historical search/candidate prefix. The original watch **also**
+preserves earlier candidates lacking their source-search receipt; these remain
+in custody as `unlinkedPriorCandidates`, not admissible previous reviewer
+evidence. A changed orphan is reported as
+`heldUnqualifiedSourceRevisions`, never fabricated into an earlier review.
+The existing `runWatch` optionally accepts `previousScreening` and
+returns `screeningContinuity` in the **same original watch result**, preserving
+the existing network clients, old bytes, caller-controlled time and source
+receipt admission. Both `scripts/watch-literature.mjs` and
+`bibliography watch-literature` accept that optional field in the original
+request schema. Native tests exercise this with the original archived
+OpenAlex/PubMed fixtures and their deliberately orphaned historic records. It executes the original
 screening reducer on the previous and subsequent evidence snapshots and reports
 (1) changed source item and original review-quote dependencies, (2) changes to
 DOI-based record status when another original source receipt joins the record,
