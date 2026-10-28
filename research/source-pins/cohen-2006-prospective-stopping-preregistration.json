@@ -1,0 +1,100 @@
+{
+  "type": "PreregisteredFiniteScreeningStopHeuristicAssay",
+  "version": 1,
+  "recordedOn": "2026-10-27",
+  "sourceScienceOwner": "lenticule-science/library-science-services-section/issues/1",
+  "existingBibliographyProtocolPath": "research/source-pins/cohen-2006-text-screening-pilot-preregistration.json",
+  "existingBibliographyProtocolBlobSha1": "408b379de405aacbadf0f8a4501c49014965c68b",
+  "originalSourceOwner": "LHofstee/systematic-review-datasets",
+  "originalSourceCommit": "ee5f9a88cbf7945c2d6d679385f8605f28b298e9",
+  "tasks": [
+    {
+      "key": "Antihistamines",
+      "sourceCommit": "ee5f9a88cbf7945c2d6d679385f8605f28b298e9",
+      "path": "datasets/Cohen_2006/output/online/Antihistamines.csv",
+      "gitBlobSha1": "755bded91ae2fe22873325572f4dde5ac05d46d3",
+      "reportedRows": 310,
+      "reportedFinalIncluded": 16,
+      "query": "antihistamine histamine allergy allergic H1 receptor treatment"
+    },
+    {
+      "key": "Estrogens",
+      "sourceCommit": "ee5f9a88cbf7945c2d6d679385f8605f28b298e9",
+      "path": "datasets/Cohen_2006/output/online/Estrogens.csv",
+      "gitBlobSha1": "ce75e9dc8d4729e757dbfb8d7aaf70346f7372c2",
+      "reportedRows": 368,
+      "reportedFinalIncluded": 80,
+      "query": "estrogen hormone therapy replacement menopause postmenopausal"
+    },
+    {
+      "key": "UrinaryIncontinence",
+      "sourceCommit": "ee5f9a88cbf7945c2d6d679385f8605f28b298e9",
+      "path": "datasets/Cohen_2006/output/online/UrinaryIncontinence.csv",
+      "gitBlobSha1": "167b1db5435d74d87f3c37a31d01427195f6cab7",
+      "reportedRows": 327,
+      "reportedFinalIncluded": 40,
+      "query": "urinary incontinence bladder treatment pelvic randomized trial"
+    }
+  ],
+  "priorLiterature": [
+    {
+      "title": "SAFE: a practical stopping heuristic",
+      "doi": "10.1186/s13643-024-02502-7",
+      "qualification": "multi-condition heuristic, NOT reproduced here"
+    },
+    {
+      "title": "Don't Stop Me Now: Evaluation of Stopping Methods",
+      "doi": "10.1002/cesm.70068",
+      "qualification": "81 real-world datasets, published comparator context"
+    },
+    {
+      "title": "Optimising screening efficiency in evidence synthesis on health Technology",
+      "doi": "10.1016/j.ijmedinf.2026.106516",
+      "qualification": "published 2026 simulation of 7% consecutive irrelevant; methodology differs"
+    }
+  ],
+  "experiment": {
+    "fixedPreexistingRanking": "BM25 title*2+abstract*1, k1=1.2,b=0.75, query frozen in earlier protocol and no human labels used for ranking",
+    "endpoints": [
+      "titleAbstract",
+      "finalInclusion"
+    ],
+    "policies": [
+      {
+        "id": "stop-07pct",
+        "irrelevantRunPercent": 7
+      },
+      {
+        "id": "stop-10pct",
+        "irrelevantRunPercent": 10
+      },
+      {
+        "id": "stop-20pct",
+        "irrelevantRunPercent": 20
+      }
+    ],
+    "minScreenedPercent": 10,
+    "requireAtLeastOnePositiveBeforeTrigger": true,
+    "firstEligibleTrigger": "at least ceil(10% * N) screened; at least one positive identified; last ceil(pct*N) screened have no positive at the chosen endpoint",
+    "noTrigger": "if never eligible, the full N records are screened; this is no earlier stop",
+    "secondaryIndependentCondition": "at any suggested stop calculate original boundFiniteScreeningRecall with p observed, excluded observed and unresolved N-inspected, under a hypothetical complete source frame; never grant stop authority",
+    "evalOnly": "actual true recall, missed sources, cumulative positives, inspected counts, screen fraction; a retrospective oracle is used ONLY after the proposed stop to judge its performance",
+    "baseline": 128,
+    "baselineRandomization": "original original-corpus xorshift32 Fisher-Yates PRNG seeded 20261027 + 2654435761 * (ordinal+1), sorted PMID before shuffling, same seeds as earlier pilot",
+    "successCriterion": "exhibit any actual early heuristic stop with true recall below 95% as a falsifying counterexample to unconditional 7% stopping",
+    "negativeFindingIsPublishable": true,
+    "excludeTunedLabels": true,
+    "fixedConfidenceGoal": {
+      "numerator": 95,
+      "denominator": 100
+    },
+    "limits": [
+      "Not the full four-phase SAFE protocol, no second model, key-paper authority or adaptive active-learning training.",
+      "Static BM25 is a deliberately weak, fixed ranking; these results do not estimate any ASReview model's ability.",
+      "The protocol cannot assert any authorization to stop screening, even for a hypothetical source-complete finite corpus.",
+      "Three tasks from the same Cohen medicine collection are not independent scientific domains.",
+      "Custom/open source data rights do not authorize republishing abstracts; output aggregate metrics only.",
+      "This is a retrospective simulated sequential revelation of existing labels, not an authenticated live reviewer."
+    ]
+  }
+}
