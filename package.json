@@ -1,6 +1,6 @@
 {
   "name": "@red-cup-engineering/bibliography-engineering-services-section",
-  "version": "0.10.0",
+  "version": "0.11.0",
   "type": "module",
   "description": "Engineering policy and operations for depth-2 bibliography Markdown carriers and the depth-1 references: maps they reconcile against across a science section's carrier corpus, plus bibliographic-record retrieval (OpenAlex, PubMed, CrossRef) and systematic-review screening of the candidates it surfaces.",
   "repository": {
@@ -38,7 +38,10 @@
     "./scripts/reproduce-synergy-identity-audit.mjs": "./scripts/reproduce-synergy-identity-audit.mjs",
     "./synergy-identity-profiles.json": "./research/source-pins/synergy-2026-benchmark-identity-profiles.json",
     "./screening-endpoint-pilot": "./src/screening-endpoint-pilot.mjs",
-    "./cohen-screening-pilot-preregistration.json": "./research/source-pins/cohen-2006-text-screening-pilot-preregistration.json"
+    "./cohen-screening-pilot-preregistration.json": "./research/source-pins/cohen-2006-text-screening-pilot-preregistration.json",
+    "./screening-stopping-assay": "./src/screening-stopping-assay.mjs",
+    "./scripts/reproduce-cohen-stopping-study.mjs": "./scripts/reproduce-cohen-stopping-study.mjs",
+    "./cohen-stopping-preregistration.json": "./research/source-pins/cohen-2006-prospective-stopping-preregistration.json"
   },
   "bin": {
     "bibliography": "./apps/bibliography-cli.mjs"

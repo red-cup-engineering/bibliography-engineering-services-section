@@ -380,6 +380,64 @@ of up to six unresolved records, show the lower bound is sharp, and
 refuse malformed or identity-collapsing counts. See
 `test/finite-recall-bound.test.mjs`.
 
+### Conditional finite recall versus evaluated real stopping decisions
+
+The earlier **source-locked** Cohen text-screening study demonstrated WSS@95 for a
+fixed, label-blind BM25 baseline against three original drug-review corpora and
+both original label endpoints. WSS@95 is *retrospective*: the number of relevant
+papers is available to the evaluator but not a prospective screening agent.
+The original \`boundFiniteScreeningRecall\` mathematically refuses to grant
+operative stop authority based on a mere retrospective WSS score.
+
+The original source is now extended by \`./screening-stopping-assay\` and
+\`scripts/reproduce-cohen-stopping-study.mjs\`. We reused, rather than cloned,
+the **original source-pinned Cohen acquisition, original CSV codec, original
+BM25 ranking and 128 original seeded random permutations**. A source
+pre-registration at
+\`research/source-pins/cohen-2006-prospective-stopping-preregistration.json\`
+was committed before computing the actual findings and itself binds the
+original text-screening pre-registration's **Git blob SHA-1**, source edition,
+queries, original three study tasks and label definitions.
+
+An explicit sequential simulation reveals one source-record label to the
+stopping rule at a time. Three **predeclared sensitivity rules** are evaluated
+at both source labels: stop after \`ceil(7% * N)\`, \`ceil(10% * N)\` or
+\`ceil(20% * N)\` consecutive negative judgments, *after* at least
+\`ceil(10% * N)\` records and at least one observed positive. The rule sees
+only inspected labels. The retrospective assessor—**never the stopping
+decision**—then reveals all records to assess actual source-labeled recall,
+number of remaining relevant works, inspected fraction, and comparison with
+the 128 fixed random permutations. The original
+\`boundFiniteScreeningRecall\` independently computes exact
+p/(p+u) worst-case recall under the **conditional** hypothesis of a complete
+source-identity frame, and always keeps \`operativeStopAuthorized: false\`.
+
+\`\`\`sh
+npm install --ignore-scripts --no-audit --no-fund
+node --test test/screening-stopping-*.test.mjs
+node scripts/reproduce-cohen-stopping-study.mjs > cohen-stopping-study.json
+\`\`\`
+
+This is **not** the full SAFE method or an adaptive active-learning system,
+does **not** simulate ASReview's model nor authenticate a live reviewer, and
+does **not** authorize any clinical or scientific stop. The test answers a
+narrow scientific question: can a seemingly sensible consecutive-negative
+rule **fail on actual source-labeled records when the ranking and threshold
+were frozen in advance?** A negative result must remain published as a
+counterexample, not hidden by post-hoc tuning. It cannot establish
+a general population failure rate across independent scientific domains,
+because all three reviews came from one Cohen drug-review collection.
+
+Relevant independent prior art includes the SAFE multi-condition procedure
+(Boetje & van de Schoot 2024,
+https://doi.org/10.1186/s13643-024-02502-7), the 2026 evaluation of fifteen
+stopping methods across 81 review datasets (Repke et al.,
+https://doi.org/10.1002/cesm.70068), and the 2026 ASReview screening
+simulation (https://doi.org/10.1016/j.ijmedinf.2026.106516). None is
+represented by our single-factor baseline. Source data remains subject to
+the original author's separately declared "custom open license"; no article
+text is republished or commercially sublicensed by the result.
+
 ### Registers and source records
 
 - `src/register.mjs` — `searchRegister(register, variables)`. A register is

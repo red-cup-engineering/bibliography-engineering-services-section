@@ -1,0 +1,94 @@
+name: Reproduce research screening stopping under source-qualified evidence
+on:
+  pull_request:
+    paths:
+      - "src/screening-stopping-assay.mjs"
+      - "src/screening-endpoint-pilot.mjs"
+      - "scripts/reproduce-cohen-stopping-study.mjs"
+      - "scripts/verify-cohen-stopping-replay.py"
+      - "scripts/reproduce-cohen-screening-pilot.mjs"
+      - "test/screening-stopping-*.test.mjs"
+      - "research/source-pins/cohen-2006-prospective-stopping-preregistration.json"
+      - "package.json"
+      - ".github/workflows/source-stopping-evidence.yml"
+  push:
+    branches: [main]
+    paths:
+      - "src/screening-stopping-assay.mjs"
+      - "src/screening-endpoint-pilot.mjs"
+      - "scripts/reproduce-cohen-stopping-study.mjs"
+      - "scripts/verify-cohen-stopping-replay.py"
+      - "scripts/reproduce-cohen-screening-pilot.mjs"
+      - "test/screening-stopping-*.test.mjs"
+      - "research/source-pins/cohen-2006-prospective-stopping-preregistration.json"
+      - "package.json"
+      - ".github/workflows/source-stopping-evidence.yml"
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  reproduce-stopping-study:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Restore exact original bibliography and CSV deps
+        run: npm install --ignore-scripts --no-audit --no-fund
+      - name: Verify all original bibliography source and new refusal controls
+        run: |
+          npm run check
+          npm test
+      - name: Read original pinned Cohen data and simulate prespecified sequential stop policies
+        run: node scripts/reproduce-cohen-stopping-study.mjs > cohen-stopping-study.json
+      - name: Independently inspect research scope, 18 endpoint policies and withheld stop authority
+        run: |
+          node --input-type=module -e '
+            import {readFileSync} from "node:fs";
+            const a=JSON.parse(readFileSync("cohen-stopping-study.json","utf8"));
+            const expected=[["Antihistamines",310,16,92],["Estrogens",368,80,80],["UrinaryIncontinence",327,40,78]];
+            if(a.type!=="SourceVerifiedCohenSequentialStoppingStudy" ||
+               a.originalSourceCommit!=="ee5f9a88cbf7945c2d6d679385f8605f28b298e9" ||
+               a.originalFrozenProtocolBlob!=="408b379de405aacbadf0f8a4501c49014965c68b" ||
+               a.comparisons.length!==3 || a.aggregate.tests!==18 ||
+               a.aggregate.earlyStopProposals<0 || a.aggregate.earlyStopProposals>18 ||
+               a.deploymentAuthorized!==false) throw Error("Source/aggregation custody failure");
+            for(let i=0;i<expected.length;i++){
+              const [id,n,fin,init]=expected[i],c=a.comparisons[i];
+              if(c.corpus!==id || c.population!==n ||
+                 c.comparators.titleAbstract.sourceReportedPositives!==init ||
+                 c.comparators.finalInclusion.sourceReportedPositives!==fin ||
+                 c.operativeStopAuthorized!==false) throw Error("Incompatible task: "+id);
+              for(const ep of ["titleAbstract","finalInclusion"]){
+                for(const id of ["stop-07pct","stop-10pct","stop-20pct"]){
+                  const p=c.comparators[ep].policies[id];
+                  if(p.random128.n!==128||p.bm25.sharpFiniteFrame.frameSize!==n||
+                     p.bm25.operativeStopAuthorized!==false||
+                     p.bm25.sharpFiniteFrame.operativeStopAuthorized!==false||
+                     p.bm25.inspected>n ||
+                     p.bm25.retrospectiveEvaluation.actualRecall<0 ||
+                     p.bm25.retrospectiveEvaluation.actualRecall>1)
+                    throw Error("Stop qualification invalid: "+id);
+                  console.log(c.corpus,ep,id,JSON.stringify({
+                    proposed:p.bm25.stopProposal,
+                    inspected:p.bm25.inspected,
+                    observedPos:p.bm25.revealedPrefix.observedPositive,
+                    trueRecall:p.bm25.retrospectiveEvaluation.actualRecall,
+                    worstCaseRecall:p.bm25.sharpFiniteFrame.sharpWorstCaseRecall?.value,
+                    missed95:p.bm25.retrospectiveEvaluation.missed95PercentGoal,
+                    random128Premature:p.random128.prematureStopsUnder95
+                  }));
+                }
+              }
+            }
+            console.log("Aggregate",JSON.stringify(a.aggregate));
+          '
+      - name: Independently reacquire pinned public sources and rederive all 18 decisions in Python
+        run: python3 scripts/verify-cohen-stopping-replay.py cohen-stopping-study.json
+      - uses: actions/upload-artifact@v4
+        with:
+          name: cohen-source-qualified-sequential-stop-assay
+          path: cohen-stopping-study.json
+          retention-days: 90
