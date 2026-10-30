@@ -454,7 +454,7 @@ text is republished or commercially sublicensed by the result.
   cite (`uncitable`) and what a cited row carries (`requires`), and its
   `x-row-defaults` fill a newly read row. A note cites a row by its house
   citation label (`formatCitationLabel`), and its frontmatter `references:`
-  map is derived from the rows it cites. **One shared author–year
+  map is derived from the rows it cites. **The original source-record reader now also accepts the canonical Markdown `@citekey`/`[@citekey]` syntax** through the same bibliography collector scanner, preserving source positions, excluding fenced code and email-shaped text, and selecting the exact original CSL `item.id`. An unknown key is a typed source-record refusal; a real, unambiguous human-readable author–year label still works. Distinct same-author/year papers can both be cited by their **different original citekeys**, without attributing either from an ambiguous prose label or minting a second source. **One shared author–year
   presentation must not invent citations to two different original works:**
   if two source rows have the same `formatCitationLabel` and that wording
   occurs in a note, `record-check` returns an explicit ambiguity instead of
