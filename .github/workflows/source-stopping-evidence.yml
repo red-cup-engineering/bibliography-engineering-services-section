@@ -85,7 +85,9 @@ jobs:
             }
             console.log("Aggregate",JSON.stringify(a.aggregate));
           '
-      - name: Independently reacquire pinned public sources and rederive all 18 decisions in Python
+      - name: Independently test frozen PRNG and falsified randomized summaries
+        run: python3 scripts/verify-cohen-stopping-replay.py --self-test
+      - name: Independently reacquire pinned sources and verify 18 BM25 plus 2304 random decisions
         run: python3 scripts/verify-cohen-stopping-replay.py cohen-stopping-study.json
       - uses: actions/upload-artifact@v4
         with:
