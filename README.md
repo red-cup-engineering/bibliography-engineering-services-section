@@ -460,8 +460,9 @@ text is republished or commercially sublicensed by the result.
   occurs in a note, `record-check` returns an explicit ambiguity instead of
   certifying both sources; `record-references` and uncited-source review
   refuse to assign either work automatically. Retain both original identities
-  and disambiguate through the existing citekey-bearing bibliography or an
-  author-approved, source-specific prose label, not a last-writer override.
+  and resolve the intended original work through the existing citekey-bearing
+  bibliography and its author-controlled source identity; the plain prose
+  label reader deliberately cannot decide between the two.
   Source labels are presentation, not publication identity or verification
   of what a paper actually said. `record-search`, `record-read`,
   `record-check` and `record-references` are its CLI verbs.
