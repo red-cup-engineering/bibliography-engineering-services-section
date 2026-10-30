@@ -454,7 +454,17 @@ text is republished or commercially sublicensed by the result.
   cite (`uncitable`) and what a cited row carries (`requires`), and its
   `x-row-defaults` fill a newly read row. A note cites a row by its house
   citation label (`formatCitationLabel`), and its frontmatter `references:`
-  map is derived from the rows it cites. `record-search`, `record-read`,
+  map is derived from the rows it cites. **One shared author–year
+  presentation must not invent citations to two different original works:**
+  if two source rows have the same `formatCitationLabel` and that wording
+  occurs in a note, `record-check` returns an explicit ambiguity instead of
+  certifying both sources; `record-references` and uncited-source review
+  refuse to assign either work automatically. Retain both original identities
+  and resolve the intended original work through the existing citekey-bearing
+  bibliography and its author-controlled source identity; the plain prose
+  label reader deliberately cannot decide between the two.
+  Source labels are presentation, not publication identity or verification
+  of what a paper actually said. `record-search`, `record-read`,
   `record-check` and `record-references` are its CLI verbs.
 
 - `apps/bibliography-cli.mjs` — the composed CLI face over all of the above.

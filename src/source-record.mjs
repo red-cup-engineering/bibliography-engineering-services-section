@@ -51,8 +51,29 @@ export function admitSourceRecord(record, schema) {
   return Object.freeze(findings);
 }
 
+/** A short author/year presentation can name multiple distinct original works.
+ * Preserve each source occurrence; never let one ambiguous prose occurrence
+ * silently count as independent evidence from *both* publications. */
+function ambiguousCitationLabels(record, body) {
+  const byLabel = new Map();
+  for (const row of record.sources ?? []) {
+    const label = formatCitationLabel(row.item);
+    if (!body.includes(label)) continue;
+    if (!byLabel.has(label)) byLabel.set(label, []);
+    byLabel.get(label).push(row.item?.id ?? "(unidentified source)");
+  }
+  return [...byLabel].filter(([, ids]) => ids.length > 1)
+    .sort(([a], [b]) => a < b ? -1 : a > b ? 1 : 0)
+    .map(([label, ids]) => ({label, ids: [...ids].sort()}));
+}
+
 /** The rows a note's prose cites, by house citation label, in order of first citation. */
 export function citedRows(record, body) {
+  const ambiguous = ambiguousCitationLabels(record, body);
+  if (ambiguous.length) {
+    throw new TypeError("ambiguous source citation label: " + ambiguous
+      .map(({label, ids}) => JSON.stringify(label) + " names " + ids.join(", ")).join("; "));
+  }
   return (record.sources ?? [])
     .map((row) => ({ row, at: body.indexOf(formatCitationLabel(row.item)) }))
     .filter(({ at }) => at !== -1)
@@ -63,9 +84,12 @@ export function citedRows(record, body) {
 /** Rows no note cites: read, but resting nothing. */
 export function uncitedRows(record, texts) {
   const bodies = texts.map((text) => readMarkdownFrontmatter(text, { frontmatterFormats: ["yaml"], absentFrontmatter: "empty" }).body);
+  // A label that denotes multiple records is unresolved, not evidence that
+  // several different papers were read by this note.
+  const cited = new Set(bodies.flatMap((body) => citedRows(record, body).map(({item}) => item.id)));
   return (record.sources ?? [])
-    .filter(({ item }) => !bodies.some((body) => body.includes(formatCitationLabel(item))))
-    .map(({ item }) => finding("warning", "record", `${formatCitationLabel(item)} (${item.id}) is cited by no note`));
+    .filter(({item}) => !cited.has(item.id))
+    .map(({item}) => finding("warning", "record", `${formatCitationLabel(item)} (${item.id}) is cited by no note`));
 }
 
 /** The note's `references:` map, derived from the rows it cites. */
@@ -87,6 +111,12 @@ export function checkNote(record, schema, text, where) {
   const findings = [];
   const policy = schema["x-citation-policy"] ?? {};
   const { frontmatter, body } = readMarkdownFrontmatter(text, { frontmatterFormats: ["yaml"], absentFrontmatter: "empty" });
+  const ambiguous = ambiguousCitationLabels(record, body);
+  if (ambiguous.length) {
+    for (const {label, ids} of ambiguous)
+      findings.push(finding("error", where, `ambiguous citation ${JSON.stringify(label)} names distinct original source records: ${ids.join(", ")}; no references may be auto-attributed`));
+    return Object.freeze(findings);
+  }
   const rows = citedRows(record, body);
   let rest = body;
   for (const { item } of record.sources ?? []) rest = rest.replaceAll(formatCitationLabel(item), "");
