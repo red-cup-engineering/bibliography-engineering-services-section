@@ -38,11 +38,11 @@ function blankFencedCodeBlocks(body) {
     .map((line) => {
       const match = FENCE_LINE.exec(line);
       if (fenceChar === null) {
-        if (match) { fenceChar = match[1][0]; return ""; }
+        if (match) { fenceChar = match[1][0]; return " ".repeat(line.length); }
         return line;
       }
       if (match && match[1][0] === fenceChar) fenceChar = null;
-      return "";
+      return " ".repeat(line.length);
     })
     .join("\n");
 }
@@ -55,13 +55,23 @@ function blankFencedCodeBlocks(body) {
  * @param {string} body - Markdown body text (frontmatter already stripped).
  * @returns {Array<string>} citekeys in the order found, one per occurrence.
  */
-function extractInlineCitekeys(body) {
+/**
+ * The original citation token scanner, now also exposing original body offsets
+ * for a source note's exact author-controlled bibliography references.
+ * Fence text is masked with equal-length spaces so source offsets remain
+ * comparable to prose-label positions in the unmodified Markdown body.
+ */
+export function extractInlineCitationOccurrences(body) {
   const stripped = blankFencedCodeBlocks(body);
-  const keys = [];
+  const found = [];
   for (const match of stripped.matchAll(INLINE_CITATION_TOKEN)) {
-    if (CITEKEY.test(match[1])) keys.push(match[1]);
+    if (CITEKEY.test(match[1]))
+      found.push(Object.freeze({ citekey: match[1], at: match.index }));
   }
-  return keys;
+  return Object.freeze(found);
+}
+function extractInlineCitekeys(body) {
+  return extractInlineCitationOccurrences(body).map(({citekey})=>citekey);
 }
 
 /**
