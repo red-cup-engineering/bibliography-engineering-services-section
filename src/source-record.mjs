@@ -23,6 +23,7 @@ import { mutateMarkdownFrontmatter } from "@red-cup-engineering/markdown-enginee
 import { readMarkdownFrontmatter } from "@red-cup-engineering/read-markdown-frontmatter-service";
 import { isDeepStrictEqual } from "node:util";
 import { searchRegister } from "./register.mjs";
+import { extractInlineCitationOccurrences } from "./bibliography-collect.mjs";
 
 const finding = (level, where, message) => Object.freeze({ level, where, message });
 const today = () => new Date().toISOString().slice(0, 10);
@@ -67,18 +68,40 @@ function ambiguousCitationLabels(record, body) {
     .map(([label, ids]) => ({label, ids: [...ids].sort()}));
 }
 
-/** The rows a note's prose cites, by house citation label, in order of first citation. */
+/** Native source-record readers accept both exact CSL house citekeys and
+ * unambiguous human author-year names. One displayed label cannot select two
+ * original works; an explicit citekey may select the exact source occurrence.
+ * This reuses the canonical bibliography token scanner (including fenced
+ * code and emails), not a new competing citation parser. */
+function sourceCitationPositions(record, body) {
+  const byId=new Map((record.sources??[]).map(row=>[row.item?.id,row]));
+  const citations=extractInlineCitationOccurrences(body);
+  const unknown=[...new Set(citations.map(({citekey})=>citekey).filter(id=>!byId.has(id)))].sort();
+  const ambiguous=ambiguousCitationLabels(record, body);
+  return {citations,byId,unknown,ambiguous};
+}
+
+/** The original source's cited rows, in order of first actual citation. */
 export function citedRows(record, body) {
-  const ambiguous = ambiguousCitationLabels(record, body);
+  const {citations,unknown,ambiguous}=sourceCitationPositions(record,body);
   if (ambiguous.length) {
     throw new TypeError("ambiguous source citation label: " + ambiguous
       .map(({label, ids}) => JSON.stringify(label) + " names " + ids.join(", ")).join("; "));
   }
+  if (unknown.length) throw new TypeError("unmatched original source citation key: " + unknown.join(", "));
+  const explicit=new Map();
+  for(const {citekey,at} of citations)
+    if(!explicit.has(citekey))explicit.set(citekey,at);
   return (record.sources ?? [])
-    .map((row) => ({ row, at: body.indexOf(formatCitationLabel(row.item)) }))
-    .filter(({ at }) => at !== -1)
-    .sort((a, b) => a.at - b.at)
-    .map(({ row }) => row);
+    .map(row=>{
+      const labelAt=body.indexOf(formatCitationLabel(row.item));
+      const keyAt=explicit.get(row.item.id)??-1;
+      const at=labelAt<0?keyAt:keyAt<0?labelAt:Math.min(labelAt,keyAt);
+      return {row,at};
+    })
+    .filter(({at})=>at>=0)
+    .sort((a,b)=>a.at-b.at)
+    .map(({row})=>row);
 }
 
 /** Rows no note cites: read, but resting nothing. */
@@ -111,12 +134,14 @@ export function checkNote(record, schema, text, where) {
   const findings = [];
   const policy = schema["x-citation-policy"] ?? {};
   const { frontmatter, body } = readMarkdownFrontmatter(text, { frontmatterFormats: ["yaml"], absentFrontmatter: "empty" });
-  const ambiguous = ambiguousCitationLabels(record, body);
+  const {ambiguous,unknown}=sourceCitationPositions(record,body);
   if (ambiguous.length) {
     for (const {label, ids} of ambiguous)
       findings.push(finding("error", where, `ambiguous citation ${JSON.stringify(label)} names distinct original source records: ${ids.join(", ")}; no references may be auto-attributed`));
-    return Object.freeze(findings);
   }
+  for (const key of unknown)
+    findings.push(finding("error", where, `citation ${JSON.stringify(key)} has no original source row`));
+  if (findings.some(f=>f.level==="error"))return Object.freeze(findings);
   const rows = citedRows(record, body);
   let rest = body;
   for (const { item } of record.sources ?? []) rest = rest.replaceAll(formatCitationLabel(item), "");
