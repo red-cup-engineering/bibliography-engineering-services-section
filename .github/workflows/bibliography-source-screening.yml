@@ -3,6 +3,8 @@ on:
   pull_request:
     paths:
       - 'src/reference-screening*.mjs'
+      - 'src/source-record.mjs'
+      - 'test/source-record.test.mjs'
       - 'src/screening-continuity.mjs'
       - 'scripts/review-screening-continuity.mjs'
       - 'test/screening-continuity.test.mjs'
@@ -15,6 +17,8 @@ on:
     branches: [main]
     paths:
       - 'src/reference-screening*.mjs'
+      - 'src/source-record.mjs'
+      - 'test/source-record.test.mjs'
       - 'test/reference-screening*.test.mjs'
       - 'scripts/screen-candidates.mjs'
       - 'apps/bibliography-cli.mjs'
@@ -37,6 +41,8 @@ jobs:
           node --check src/reference-screening.mjs
           node --check scripts/screen-candidates.mjs
           node --check src/screening-continuity.mjs
+          node --check src/source-record.mjs
+          node --check test/source-record.test.mjs
           node --check scripts/review-screening-continuity.mjs
           node --test test/reference-screening.test.mjs test/screen-candidates-cli.test.mjs test/screening-continuity.test.mjs
   original-package-integration:
