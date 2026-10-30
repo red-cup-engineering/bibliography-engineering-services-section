@@ -85,7 +85,7 @@ test("canonical citekey extractor preserves original body offsets after fenced c
  ]);
 });
 test("canonical source scanner rejects email/inside-fence terms while retaining an outside source key",()=>{
- const body="info@bogus2024.com and ```\n[@fake2024]\n```\n[@smith2024]";
+ const body="info@bogus2024.com\n```\n[@fake2024]\n```\n[@smith2024]";
  assert.deepEqual(collectInlineCitationOccurrences(body),[
   {citekey:"smith2024",at:body.indexOf("@smith2024")}
  ]);
