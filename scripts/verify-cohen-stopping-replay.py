@@ -126,6 +126,119 @@ def simulate(rows, ranked, field, pct):
     }
 
 
+
+# Independently recompute the already frozen 128-rank comparator.
+# All operations are unsigned 32-bit integers, not JavaScript float code.
+MASK32 = 0xffffffff
+
+
+def frozen_random_ranks(rows, ordinal):
+    check(type(ordinal) is int and 0 <= ordinal < 128,
+          "random seed ordinal differs from predeclared protocol")
+    state = (20261027 + 2654435761 * (ordinal + 1)) & MASK32
+    state = state or 1
+    ordered = sorted(range(len(rows)), key=lambda i: rows[i]["pubmedID"])
+    for i in range(len(ordered) - 1, 0, -1):
+        state = (state ^ ((state << 13) & MASK32)) & MASK32
+        state = (state ^ (state >> 17)) & MASK32
+        state = (state ^ ((state << 5) & MASK32)) & MASK32
+        j = (state * (i + 1)) >> 32
+        ordered[i], ordered[j] = ordered[j], ordered[i]
+    return ordered
+
+
+def random_distribution(values):
+    check(len(values) == 128, "baseline must retain 128 seeded outcomes")
+    sorted_values = sorted(values)
+
+    def quantile(fraction):
+        pos = (len(values) - 1) * fraction
+        lower, upper = math.floor(pos), math.ceil(pos)
+        return (sorted_values[lower] +
+                (sorted_values[upper] - sorted_values[lower]) * (pos - lower))
+
+    return {
+        "n": len(values),
+        "mean": sum(values) / len(values),
+        "p05": quantile(0.05),
+        "median": quantile(0.5),
+        "p95": quantile(0.95),
+        "minimum": sorted_values[0],
+        "maximum": sorted_values[-1],
+    }
+
+
+def independent_random_summary(rows, field, pct):
+    trials = [simulate(rows, frozen_random_ranks(rows, ordinal), field, pct)
+              for ordinal in range(128)]
+    n = len(rows)
+    proposed = sum(t["proposed"] for t in trials)
+    premature = sum(t["proposed"] and t["missed95"] for t in trials)
+    return {
+        "n": 128,
+        "proposedEarlyStops": proposed,
+        "prematureStopsUnder95": premature,
+        "missed95AmongProposed": premature / proposed if proposed else None,
+        "recall": random_distribution([t["actual"] for t in trials]),
+        "savedFraction": random_distribution([(n-t["inspected"]) / n for t in trials]),
+    }
+
+
+def verify_random_summary(rows, field, pct, reported):
+    expected = independent_random_summary(rows, field, pct)
+    check(type(reported) is dict, "random baseline needs a result record")
+    for key in ("n", "proposedEarlyStops", "prematureStopsUnder95"):
+        check(type(reported.get(key)) is int and reported[key] == expected[key],
+              "independently reconstructed random count mismatch: " + key)
+    observed_rate, expected_rate = reported.get("missed95AmongProposed"), expected["missed95AmongProposed"]
+    check((observed_rate is None and expected_rate is None) or
+          (type(observed_rate) in (float, int) and expected_rate is not None and
+           math.isclose(observed_rate, expected_rate, rel_tol=1e-12, abs_tol=1e-12)),
+          "independently reconstructed missed-95 rate mismatch")
+    for dimension in ("recall", "savedFraction"):
+        observed = reported.get(dimension)
+        check(type(observed) is dict, "missing random result distribution: " + dimension)
+        for stat, actual in expected[dimension].items():
+            value = observed.get(stat)
+            check(type(value) in (int, float) and (
+                  value == actual if stat == "n" else
+                  math.isclose(value, actual, rel_tol=1e-12, abs_tol=1e-12)),
+                  "independent random distribution mismatch: " + dimension + "." + stat)
+    return 128
+
+
+def self_test():
+    # Reference permutations from the original JS randomRanks, computed
+    # separately before creating this independent Python implementation.
+    pmids = ["10", "2", "31", "9", "7", "1"]
+    rows = [{"pubmedID": p, "label_abstract_screening": str(int(i in (0, 1, 5)))}
+            for i, p in enumerate(pmids)]
+    golden = {
+        0: [3, 4, 5, 0, 2, 1],
+        1: [3, 4, 5, 2, 0, 1],
+        127: [2, 0, 3, 5, 1, 4],
+    }
+    for ordinal, expected in golden.items():
+        check(frozen_random_ranks(rows, ordinal) == expected,
+              "frozen JS seeded permutation differs at ordinal " + str(ordinal))
+    good = independent_random_summary(rows, "label_abstract_screening", 7)
+    check(verify_random_summary(rows, "label_abstract_screening", 7, good) == 128,
+          "valid random summary rejected")
+    for field, invalid in (("prematureStopsUnder95", 999), ("recall.p95", -1)):
+        forgery = json.loads(json.dumps(good))
+        if field == "recall.p95":
+            forgery["recall"]["p95"] = invalid
+        else:
+            forgery[field] = invalid
+        try:
+            verify_random_summary(rows, "label_abstract_screening", 7, forgery)
+        except ValueError:
+            continue
+        raise ValueError("forged random statistic was incorrectly accepted: " + field)
+    print("Independent source-free random baseline controls PASS: "
+          "3 original JavaScript seeds, 1 valid summary, 2 forged summaries refused")
+
+
 def verify(result_path):
     blob = SOURCE.read_bytes()
     prereg = json.loads(STOP.read_text(encoding="utf8"))
@@ -139,6 +252,11 @@ def verify(result_path):
           original["upstreamCommit"], "source revision mismatch")
     check(len(report["comparisons"]) == 3, "unexpected cohort count")
     comparisons = 0
+    random_trials = 0
+    check(prereg["experiment"]["baseline"] == 128 and
+          "xorshift32" in prereg["experiment"]["baselineRandomization"] and
+          prereg["experiment"]["minScreenedPercent"] == 10,
+          "frozen baseline inputs differ")
     for task, output in zip(prereg["tasks"], report["comparisons"], strict=True):
         rows, digest = read_original(task, report["originalSourceCommit"])
         check(digest == output["source"]["sha256"], "original-source SHA-256 disagrees")
@@ -158,22 +276,29 @@ def verify(result_path):
                       abs(b["sharpFiniteFrame"]["sharpWorstCaseRecall"]["value"] - actual["sharp"]) < 1e-13 and
                       b["operativeStopAuthorized"] is False,
                       "independent stopping disagreement: " + task["key"] + "/" + label + "/" + name)
+                random_trials += verify_random_summary(
+                    rows, field, pct, output["comparators"][label]["policies"][name]["random128"])
                 comparisons += 1
                 print(task["key"], label, name, "inspected", actual["inspected"],
                       "actual_recall", f"{actual['actual']:.6f}",
                       "premature", actual["missed95"])
     check(comparisons == 18, "incomplete experiment")
+    check(random_trials == 18 * 128, "incomplete independent randomized replication")
     check(report["deploymentAuthorized"] is False,
           "published result spuriously grants permission to stop")
     print("Independent original-source Python reproduction PASS:", comparisons,
-          "source-locked stopping policy assessments")
+          "source-locked BM25 outcomes and", random_trials,
+          "independently replayed random stopping outcomes")
 
 
 if __name__ == "__main__":
     try:
         if len(sys.argv) != 2:
-            raise ValueError("usage: python3 scripts/verify-cohen-stopping-replay.py cohen-stopping-study.json")
-        verify(sys.argv[1])
+            raise ValueError("usage: python3 scripts/verify-cohen-stopping-replay.py [--self-test|cohen-stopping-study.json]")
+        if sys.argv[1] == "--self-test":
+            self_test()
+        else:
+            verify(sys.argv[1])
     except (OSError, ValueError, KeyError, TypeError, UnicodeError) as e:
         print("INDEPENDENT STOPPING REPLAY REFUSED:", str(e), file=sys.stderr)
         sys.exit(1)
