@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { collectBibliographyCarriers, collectInlineCitationOccurrences, collectInlineCitations, collectReferenceTriples } from "../src/bibliography-collect.mjs";
+import { collectBibliographyCarriers, extractInlineCitationOccurrences, collectInlineCitations, collectReferenceTriples } from "../src/bibliography-collect.mjs";
 
 function markdown(frontmatter, body = "prose") {
   const lines = Object.entries(frontmatter).map(([key, value]) => `${key}: ${JSON.stringify(value)}`);
@@ -78,7 +78,7 @@ test("collectInlineCitations ignores a citekey-shaped token inside a fenced code
 
 test("canonical citekey extractor preserves original body offsets after fenced code",()=>{
  const source="Header\n```javascript\nconst fake=\"@faked2024\";\n```\nOutside [@moran2024b] then [@moran2024a].";
- const found=collectInlineCitationOccurrences(source);
+ const found=extractInlineCitationOccurrences(source);
  assert.deepEqual(found,[
   {citekey:"moran2024b",at:source.indexOf("@moran2024b")},
   {citekey:"moran2024a",at:source.indexOf("@moran2024a")}
@@ -86,7 +86,7 @@ test("canonical citekey extractor preserves original body offsets after fenced c
 });
 test("canonical source scanner rejects email/inside-fence terms while retaining an outside source key",()=>{
  const body="info@bogus2024.com\n```\n[@fake2024]\n```\n[@smith2024]";
- assert.deepEqual(collectInlineCitationOccurrences(body),[
+ assert.deepEqual(extractInlineCitationOccurrences(body),[
   {citekey:"smith2024",at:body.indexOf("@smith2024")}
  ]);
 });
