@@ -407,7 +407,7 @@ at both source labels: stop after \`ceil(7% * N)\`, \`ceil(10% * N)\` or
 only inspected labels. The retrospective assessor—**never the stopping
 decision**—then reveals all records to assess actual source-labeled recall,
 number of remaining relevant works, inspected fraction, and comparison with
-the 128 fixed random permutations. The original
+the 128 fixed random permutations. The existing **independent Python replay** now also recomputes each frozen pseudo-random Fisher–Yates sequence using separately implemented 32-bit integer arithmetic: **18 source/label/policy comparisons × 128 = 2,304** independent sequential-baseline decisions, plus the 18 static-ranking outcomes already covered. For each cohort and endpoint it verifies original early-stop counts, below-95% recalls, missed-target conditional rate, and complete recall/work-saved percentiles, mean, minima and maxima. A source-free self-test checks three original JavaScript golden PRNG permutations and refuses falsified counts and percentile distributions before any scientific promotion. All original acquisition, ranking, source labels, random seeds, stop policies, legal rights and prohibition on operative stopping remain unchanged. The original
 \`boundFiniteScreeningRecall\` independently computes exact
 p/(p+u) worst-case recall under the **conditional** hypothesis of a complete
 source-identity frame, and always keeps \`operativeStopAuthorized: false\`.
